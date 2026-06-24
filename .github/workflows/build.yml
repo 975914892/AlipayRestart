@@ -46,3 +46,35 @@ jobs:
         with:
           name: AlipayRestart-debug
           path: app/build/outputs/apk/debug/*.apk
+      
+      - name: Build and Upload Release APK
+        env:
+          KEYSTORE_FILE: ${{ secrets.KEYSTORE_FILE }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: |
+          if [ -z "$KEYSTORE_FILE" ]; then
+            echo "No signing key configured, skipping Release build."
+            exit 0
+          fi
+          
+          echo "Signing key found, building Release APK..."
+          echo "$KEYSTORE_FILE" | base64 -d > $GITHUB_WORKSPACE/signing-key.jks
+          
+          ./gradlew assembleRelease \
+            -Pandroid.injected.signing.store.file=$GITHUB_WORKSPACE/signing-key.jks \
+            -Pandroid.injected.signing.store.password="$KEYSTORE_PASSWORD" \
+            -Pandroid.injected.signing.key.alias="$KEY_ALIAS" \
+            -Pandroid.injected.signing.key.password="$KEY_PASSWORD" \
+            --stacktrace
+          
+          echo "Release build completed."
+      
+      - name: Upload Release APK
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: AlipayRestart-release
+          path: app/build/outputs/apk/release/*.apk
+        continue-on-error: true
