@@ -46,3 +46,21 @@ jobs:
         with:
           name: AlipayRestart-debug
           path: app/build/outputs/apk/debug/*.apk
+      
+      - name: Build Release APK
+        if: ${{ secrets.KEYSTORE_FILE != '' }}
+        run: |
+          echo "${{ secrets.KEYSTORE_FILE }}" | base64 -d > $GITHUB_WORKSPACE/signing-key.jks
+          ./gradlew assembleRelease \
+            -Pandroid.injected.signing.store.file=$GITHUB_WORKSPACE/signing-key.jks \
+            -Pandroid.injected.signing.store.password=${{ secrets.KEYSTORE_PASSWORD }} \
+            -Pandroid.injected.signing.key.alias=${{ secrets.KEY_ALIAS }} \
+            -Pandroid.injected.signing.key.password=${{ secrets.KEY_PASSWORD }} \
+            --stacktrace
+      
+      - name: Upload Release APK
+        if: ${{ secrets.KEYSTORE_FILE != '' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: AlipayRestart-release
+          path: app/build/outputs/apk/release/*.apk
