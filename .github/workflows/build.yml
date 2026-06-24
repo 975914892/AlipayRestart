@@ -21,30 +21,24 @@ jobs:
         with:
           java-version: '17'
           distribution: 'temurin'
-          cache: 'gradle'
       
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v3
         with:
           gradle-version: 8.5
       
-      - name: Generate Gradle Wrapper if not exists
-        run: |
-          if [ ! -f "./gradlew" ]; then
-            echo "gradlew not found, generating wrapper..."
-            gradle wrapper --gradle-version 8.5
-          fi
-          chmod +x gradlew
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
       
-      - name: Cache Gradle packages
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.gradle/caches
-            ~/.gradle/wrapper
-          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
-          restore-keys: |
-            ${{ runner.os }}-gradle-
+      - name: Accept Android SDK licenses and install components
+        run: |
+          yes | sdkmanager --licenses || true
+          sdkmanager "platforms;android-34" "build-tools;34.0.0"
+      
+      - name: Generate Gradle Wrapper
+        run: |
+          gradle wrapper --gradle-version 8.5
+          chmod +x gradlew
       
       - name: Build Debug APK
         run: ./gradlew assembleDebug --stacktrace
@@ -55,7 +49,7 @@ jobs:
           name: AlipayRestart-debug
           path: app/build/outputs/apk/debug/*.apk
       
-      - name: Build Release APK (if signing key available)
+      - name: Build Release APK
         if: ${{ secrets.KEYSTORE_FILE != '' }}
         run: |
           echo "Creating keystore file..."
