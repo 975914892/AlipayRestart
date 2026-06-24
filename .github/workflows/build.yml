@@ -48,18 +48,23 @@ jobs:
           path: app/build/outputs/apk/debug/*.apk
       
       - name: Build Release APK
-        if: ${{ secrets.KEYSTORE_FILE != '' }}
+        if: secrets.KEYSTORE_FILE
         run: |
-          echo "${{ secrets.KEYSTORE_FILE }}" | base64 -d > $GITHUB_WORKSPACE/signing-key.jks
+          echo "$KEYSTORE_FILE" | base64 -d > $GITHUB_WORKSPACE/signing-key.jks
           ./gradlew assembleRelease \
             -Pandroid.injected.signing.store.file=$GITHUB_WORKSPACE/signing-key.jks \
-            -Pandroid.injected.signing.store.password=${{ secrets.KEYSTORE_PASSWORD }} \
-            -Pandroid.injected.signing.key.alias=${{ secrets.KEY_ALIAS }} \
-            -Pandroid.injected.signing.key.password=${{ secrets.KEY_PASSWORD }} \
+            -Pandroid.injected.signing.store.password="$KEYSTORE_PASSWORD" \
+            -Pandroid.injected.signing.key.alias="$KEY_ALIAS" \
+            -Pandroid.injected.signing.key.password="$KEY_PASSWORD" \
             --stacktrace
+        env:
+          KEYSTORE_FILE: ${{ secrets.KEYSTORE_FILE }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
       
       - name: Upload Release APK
-        if: ${{ secrets.KEYSTORE_FILE != '' }}
+        if: secrets.KEYSTORE_FILE
         uses: actions/upload-artifact@v4
         with:
           name: AlipayRestart-release
