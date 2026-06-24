@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">一键重启支付宝</string>
+    <string name="restart_shortcut_label">重启支付宝</string>
+    <string name="restart_shortcut_long_label">强行停止并重启支付宝</string>
+</resources>
