@@ -9,11 +9,10 @@ on:
 
 jobs:
   build:
-    name: Build APK
     runs-on: ubuntu-latest
     
     steps:
-      - name: Checkout code
+      - name: Checkout
         uses: actions/checkout@v4
       
       - name: Set up JDK 17
@@ -21,24 +20,23 @@ jobs:
         with:
           java-version: '17'
           distribution: 'temurin'
+          cache: 'gradle'
       
-      - name: Setup Gradle
+      - name: Install Gradle
         uses: gradle/actions/setup-gradle@v3
         with:
           gradle-version: 8.5
       
-      - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
-      
-      - name: Accept Android SDK licenses and install components
-        run: |
-          yes | sdkmanager --licenses || true
-          sdkmanager "platforms;android-34" "build-tools;34.0.0"
-      
       - name: Generate Gradle Wrapper
+        run: gradle wrapper --gradle-version 8.5
+      
+      - name: Grant execute permission for gradlew
+        run: chmod +x gradlew
+      
+      - name: Accept Android SDK licenses
         run: |
-          gradle wrapper --gradle-version 8.5
-          chmod +x gradlew
+          yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses || true
+          yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --sdk_root=${ANDROID_HOME} "platforms;android-34" "build-tools;34.0.0" || true
       
       - name: Build Debug APK
         run: ./gradlew assembleDebug --stacktrace
@@ -48,22 +46,3 @@ jobs:
         with:
           name: AlipayRestart-debug
           path: app/build/outputs/apk/debug/*.apk
-      
-      - name: Build Release APK
-        if: ${{ secrets.KEYSTORE_FILE != '' }}
-        run: |
-          echo "Creating keystore file..."
-          echo "${{ secrets.KEYSTORE_FILE }}" | base64 -d > $GITHUB_WORKSPACE/signing-key.jks
-          ./gradlew assembleRelease \
-            -Pandroid.injected.signing.store.file=$GITHUB_WORKSPACE/signing-key.jks \
-            -Pandroid.injected.signing.store.password=${{ secrets.KEYSTORE_PASSWORD }} \
-            -Pandroid.injected.signing.key.alias=${{ secrets.KEY_ALIAS }} \
-            -Pandroid.injected.signing.key.password=${{ secrets.KEY_PASSWORD }} \
-            --stacktrace
-      
-      - name: Upload Release APK
-        if: ${{ secrets.KEYSTORE_FILE != '' }}
-        uses: actions/upload-artifact@v4
-        with:
-          name: AlipayRestart-release
-          path: app/build/outputs/apk/release/*.apk
