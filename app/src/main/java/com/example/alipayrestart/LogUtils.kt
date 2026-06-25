@@ -1,7 +1,6 @@
 package com.example.alipayrestart
 
 import android.os.Environment
-import de.robv.android.xposed.XposedBridge
 import org.json.JSONObject
 import java.io.File
 import java.io.FileWriter
@@ -13,7 +12,7 @@ import java.util.Locale
 
 /**
  * 日志工具类
- * 同时输出到 XposedBridge 和本地文件，方便调试
+ * 同时输出到 XposedBridge（如果可用）和本地文件，方便调试
  * 支持开关控制，从配置文件读取是否启用日志
  */
 object LogUtils {
@@ -26,6 +25,45 @@ object LogUtils {
     private var logFile: File? = null
     private var initialized = false
     private var logEnabled = true // 默认开启
+
+    // 缓存 XposedBridge 是否可用
+    private var xposedBridgeChecked = false
+    private var xposedBridgeAvailable = false
+
+    /**
+     * 检查 XposedBridge 是否可用
+     */
+    private fun isXposedBridgeAvailable(): Boolean {
+        if (xposedBridgeChecked) {
+            return xposedBridgeAvailable
+        }
+
+        return try {
+            Class.forName("de.robv.android.xposed.XposedBridge")
+            xposedBridgeAvailable = true
+            xposedBridgeChecked = true
+            true
+        } catch (e: ClassNotFoundException) {
+            xposedBridgeAvailable = false
+            xposedBridgeChecked = true
+            false
+        }
+    }
+
+    /**
+     * 安全调用 XposedBridge.log()
+     */
+    private fun logToXposedBridge(message: String) {
+        if (!isXposedBridgeAvailable()) return
+
+        try {
+            val xposedBridgeClass = Class.forName("de.robv.android.xposed.XposedBridge")
+            val logMethod = xposedBridgeClass.getMethod("log", String::class.java)
+            logMethod.invoke(null, "AlipayRestart: $message")
+        } catch (e: Exception) {
+            // 静默失败
+        }
+    }
 
     /**
      * 初始化日志文件
@@ -55,11 +93,16 @@ object LogUtils {
             appendLog("========== AlipayRestart 模块启动 ==========")
             appendLog("时间: ${SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(Date())}")
             appendLog("日志状态: 已启用")
+            appendLog("XposedBridge: ${if (isXposedBridgeAvailable()) "可用" else "不可用"}")
             appendLog("============================================")
 
             initialized = true
+
+            // 同时输出到 XposedBridge（如果可用）
+            logToXposedBridge("日志初始化成功")
+
         } catch (e: Exception) {
-            XposedBridge.log("AlipayRestart: 日志初始化失败 - ${e.message}")
+            // 初始化失败时不要调用 XposedBridge，可能还没准备好
         }
     }
 
@@ -99,7 +142,7 @@ object LogUtils {
         if (!logEnabled) return
 
         val fullMessage = "[INFO][$tag] $message"
-        XposedBridge.log("AlipayRestart: $fullMessage")
+        logToXposedBridge(fullMessage)
         appendLog(fullMessage)
     }
 
@@ -110,7 +153,7 @@ object LogUtils {
         if (!logEnabled) return
 
         val fullMessage = "[WARN][$tag] $message"
-        XposedBridge.log("AlipayRestart: $fullMessage")
+        logToXposedBridge(fullMessage)
         appendLog(fullMessage)
     }
 
@@ -121,14 +164,14 @@ object LogUtils {
         if (!logEnabled) return
 
         val fullMessage = "[ERROR][$tag] $message"
-        XposedBridge.log("AlipayRestart: $fullMessage")
+        logToXposedBridge(fullMessage)
         appendLog(fullMessage)
 
         if (throwable != null) {
             val sw = StringWriter()
             throwable.printStackTrace(PrintWriter(sw))
             val stackTrace = sw.toString()
-            XposedBridge.log("AlipayRestart: $stackTrace")
+            logToXposedBridge(stackTrace)
             appendLog(stackTrace)
         }
     }
@@ -140,7 +183,7 @@ object LogUtils {
         if (!logEnabled) return
 
         val fullMessage = "[DEBUG][$tag] $message"
-        XposedBridge.log("AlipayRestart: $fullMessage")
+        logToXposedBridge(fullMessage)
         appendLog(fullMessage)
     }
 
