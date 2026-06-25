@@ -178,6 +178,22 @@
                     android:text="查看最新日志"
                     android:layout_marginBottom="8dp" />
 
+                <!-- 查看早期启动日志按钮 -->
+                <Button
+                    android:id="@+id/btnViewEarlyLog"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="查看早期启动日志"
+                    android:layout_marginBottom="8dp" />
+
+                <!-- 查看崩溃日志按钮 -->
+                <Button
+                    android:id="@+id/btnViewCrashLog"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="查看崩溃日志"
+                    android:layout_marginBottom="8dp" />
+
                 <!-- 导出日志按钮 -->
                 <Button
                     android:id="@+id/btnExportLog"

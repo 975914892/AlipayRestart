@@ -2,4 +2,7 @@
 <paths xmlns:android="http://schemas.android.com/apk/res/android">
     <!-- 外部存储根目录 -->
     <external-path name="external_files" path="." />
+
+    <!-- 内部存储 files 目录（用于早期日志和崩溃日志） -->
+    <files-path name="internal_files" path="." />
 </paths>
