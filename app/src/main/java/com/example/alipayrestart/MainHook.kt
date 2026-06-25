@@ -1,7 +1,12 @@
 package com.example.alipayrestart
 
+import android.content.Context
+import android.content.pm.ShortcutManager
+import android.os.Build
+import androidx.annotation.RequiresApi
 import de.robv.android.xposed.IXposedHookLoadPackage
 import de.robv.android.xposed.XposedBridge
+import de.robv.android.xposed.XposedHelpers
 import de.robv.android.xposed.callbacks.XC_LoadPackage
 
 /**
@@ -10,41 +15,112 @@ import de.robv.android.xposed.callbacks.XC_LoadPackage
  */
 class MainHook : IXposedHookLoadPackage {
 
+    @RequiresApi(Build.VERSION_CODES.N_MR1)
     override fun handleLoadPackage(lpparam: XC_LoadPackage.LoadPackageParam) {
         // 只处理支付宝包
         if (lpparam.packageName != TARGET_PACKAGE) {
             return
         }
 
-        XposedBridge.log("AlipayRestart: 支付宝进程加载成功，开始注入快捷方式...")
+        XposedBridge.log("AlipayRestart: 支付宝进程加载成功，开始注入...")
 
         try {
-            // Hook Application 的 onCreate 方法，在应用启动完成后添加快捷方式
+            // Hook Application 的 onCreate 方法
             val appClass = lpparam.classLoader.loadClass("android.app.Application")
-            de.robv.android.xposed.XposedHelpers.findAndHookMethod(
+            XposedHelpers.findAndHookMethod(
                 appClass,
                 "onCreate",
                 object : de.robv.android.xposed.XC_MethodHook() {
                     override fun afterHookedMethod(param: MethodHookParam) {
-                        val context = param.thisObject as android.content.Context
-                        XposedBridge.log("AlipayRestart: Application onCreate 触发，准备添加快捷方式")
-                        
-                        // 延迟一点执行，确保应用完全初始化
+                        val context = param.thisObject as Context
+                        XposedBridge.log("AlipayRestart: Application onCreate 触发")
+
+                        // 延迟添加快捷方式
                         android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
                             try {
-                                ShortcutHook.addRestartShortcut(context)
-                                XposedBridge.log("AlipayRestart: 快捷方式添加成功")
+                                ShortcutHook.ensureRestartShortcut(context)
+                                XposedBridge.log("AlipayRestart: 初始快捷方式添加完成")
                             } catch (e: Exception) {
-                                XposedBridge.log("AlipayRestart: 添加快捷方式失败 - ${e.message}")
-                                e.printStackTrace()
+                                XposedBridge.log("AlipayRestart: 初始添加快捷方式失败 - ${e.message}")
                             }
-                        }, 2000) // 延迟2秒
+                        }, 3000)
                     }
                 }
             )
+
+            // Hook ShortcutManager 的 setDynamicShortcuts 方法，防止支付宝覆盖我们的快捷方式
+            try {
+                val shortcutManagerClass = lpparam.classLoader.loadClass("android.content.pm.ShortcutManager")
+
+                // Hook setDynamicShortcuts
+                XposedHelpers.findAndHookMethod(
+                    shortcutManagerClass,
+                    "setDynamicShortcuts",
+                    MutableList::class.java,
+                    object : de.robv.android.xposed.XC_MethodHook() {
+                        override fun afterHookedMethod(param: MethodHookParam) {
+                            try {
+                                val context = getContextFromShortcutManager(param.thisObject)
+                                if (context != null) {
+                                    XposedBridge.log("AlipayRestart: 检测到 setDynamicShortcuts 调用，重新添加快捷方式")
+                                    ShortcutHook.ensureRestartShortcut(context)
+                                }
+                            } catch (e: Exception) {
+                                XposedBridge.log("AlipayRestart: setDynamicShortcuts hook 失败 - ${e.message}")
+                            }
+                        }
+                    }
+                )
+
+                // Hook addDynamicShortcuts
+                XposedHelpers.findAndHookMethod(
+                    shortcutManagerClass,
+                    "addDynamicShortcuts",
+                    MutableList::class.java,
+                    object : de.robv.android.xposed.XC_MethodHook() {
+                        override fun afterHookedMethod(param: MethodHookParam) {
+                            try {
+                                val context = getContextFromShortcutManager(param.thisObject)
+                                if (context != null) {
+                                    ShortcutHook.ensureRestartShortcut(context)
+                                }
+                            } catch (e: Exception) {
+                                // 静默失败
+                            }
+                        }
+                    }
+                )
+
+                XposedBridge.log("AlipayRestart: ShortcutManager hook 成功")
+            } catch (e: Exception) {
+                XposedBridge.log("AlipayRestart: Hook ShortcutManager 失败 - ${e.message}")
+            }
+
         } catch (e: Exception) {
-            XposedBridge.log("AlipayRestart: Hook Application 失败 - ${e.message}")
+            XposedBridge.log("AlipayRestart: Hook 初始化失败 - ${e.message}")
             e.printStackTrace()
+        }
+    }
+
+    /**
+     * 从 ShortcutManager 实例中获取 Context
+     */
+    private fun getContextFromShortcutManager(shortcutManager: Any): Context? {
+        return try {
+            val mContextField = shortcutManager.javaClass.getDeclaredField("mContext")
+            mContextField.isAccessible = true
+            mContextField.get(shortcutManager) as? Context
+        } catch (e: Exception) {
+            try {
+                // 备用方案：通过 ActivityThread 获取 ApplicationContext
+                val activityThread = XposedHelpers.callStaticMethod(
+                    XposedHelpers.findClass("android.app.ActivityThread", null),
+                    "currentActivityThread"
+                )
+                XposedHelpers.callMethod(activityThread, "getApplication") as? Context
+            } catch (e2: Exception) {
+                null
+            }
         }
     }
 
