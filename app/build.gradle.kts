@@ -36,9 +36,10 @@ android {
 }
 
 dependencies {
-    // LSPosed API
-    compileOnly("de.robv.android.xposed:api:102")
-    compileOnly("de.robv.android.xposed:api:102:sources")
+    // Xposed API (LSPosed 兼容，使用官方最新稳定版 82)
+    // LSPosed 框架自身的 API 版本在 AndroidManifest.xml 的 xposedminversion 中声明
+    compileOnly("de.robv.android.xposed:api:82")
+    compileOnly("de.robv.android.xposed:api:82:sources")
 
     // AndroidX
     implementation("androidx.core:core-ktx:1.12.0")
