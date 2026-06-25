@@ -1,0 +1,196 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:padding="16dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical">
+
+        <!-- 标题 -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="一键重启支付宝"
+            android:textSize="24sp"
+            android:textStyle="bold"
+            android:gravity="center"
+            android:layout_marginBottom="24dp" />
+
+        <!-- 模块状态卡片 -->
+        <androidx.cardview.widget.CardView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="16dp"
+            app:cardCornerRadius="12dp"
+            app:cardElevation="4dp"
+            xmlns:app="http://schemas.android.com/apk/res-auto">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="16dp">
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="模块状态"
+                    android:textSize="16sp"
+                    android:textStyle="bold"
+                    android:layout_marginBottom="8dp" />
+
+                <TextView
+                    android:id="@+id/tvModuleStatus"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="正在检测模块是否激活..."
+                    android:textSize="14sp"
+                    android:textColor="@android:color/darker_gray" />
+
+                <TextView
+                    android:id="@+id/tvModuleTip"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="请在 LSPosed 中启用本模块，作用域选择支付宝"
+                    android:textSize="12sp"
+                    android:textColor="@android:color/darker_gray"
+                    android:layout_marginTop="4dp" />
+
+            </LinearLayout>
+        </androidx.cardview.widget.CardView>
+
+        <!-- 日志设置卡片 -->
+        <androidx.cardview.widget.CardView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="16dp"
+            app:cardCornerRadius="12dp"
+            app:cardElevation="4dp"
+            xmlns:app="http://schemas.android.com/apk/res-auto">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="16dp">
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="日志设置"
+                    android:textSize="16sp"
+                    android:textStyle="bold"
+                    android:layout_marginBottom="12dp" />
+
+                <!-- 日志开关 -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:layout_marginBottom="12dp">
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:orientation="vertical">
+
+                        <TextView
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="启用日志记录"
+                            android:textSize="14sp" />
+
+                        <TextView
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="记录模块运行日志，方便排查问题"
+                            android:textSize="12sp"
+                            android:textColor="@android:color/darker_gray" />
+
+                    </LinearLayout>
+
+                    <Switch
+                        android:id="@+id/switchLogEnable"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content" />
+
+                </LinearLayout>
+
+                <!-- 日志位置 -->
+                <TextView
+                    android:id="@+id/tvLogPath"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="日志目录：/sdcard/AlipayRestart/"
+                    android:textSize="12sp"
+                    android:textColor="@android:color/darker_gray"
+                    android:layout_marginBottom="12dp" />
+
+                <!-- 查看日志按钮 -->
+                <Button
+                    android:id="@+id/btnViewLog"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="查看最新日志"
+                    android:layout_marginBottom="8dp" />
+
+                <!-- 导出日志按钮 -->
+                <Button
+                    android:id="@+id/btnExportLog"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="导出日志文件"
+                    android:layout_marginBottom="8dp" />
+
+                <!-- 清理日志按钮 -->
+                <Button
+                    android:id="@+id/btnClearLog"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="清理所有日志"
+                    style="@style/Widget.AppCompat.Button.Borderless"
+                    android:textColor="@android:color/holo_red_dark" />
+
+            </LinearLayout>
+        </androidx.cardview.widget.CardView>
+
+        <!-- 使用说明 -->
+        <androidx.cardview.widget.CardView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            app:cardCornerRadius="12dp"
+            app:cardElevation="4dp"
+            xmlns:app="http://schemas.android.com/apk/res-auto">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="16dp">
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="使用说明"
+                    android:textSize="16sp"
+                    android:textStyle="bold"
+                    android:layout_marginBottom="8dp" />
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="1. 在 LSPosed 中启用本模块\n2. 作用域选择「支付宝」\n3. 重启支付宝（或重启手机）\n4. 长按支付宝图标，点击「重启支付宝」即可\n\n注意：需要 Root 权限才能使用强行停止功能"
+                    android:textSize="13sp"
+                    android:lineSpacingExtra="4dp"
+                    android:textColor="@android:color/darker_gray" />
+
+            </LinearLayout>
+        </androidx.cardview.widget.CardView>
+
+    </LinearLayout>
+</ScrollView>

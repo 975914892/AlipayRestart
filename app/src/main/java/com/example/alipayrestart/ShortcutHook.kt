@@ -28,7 +28,6 @@ object ShortcutHook {
             // 检查是否已存在该快捷方式
             val existingShortcuts = shortcutManager.dynamicShortcuts
             LogUtils.d(TAG, "当前已有 ${existingShortcuts.size} 个动态快捷方式")
-
             existingShortcuts.forEachIndexed { index, shortcut ->
                 LogUtils.d(TAG, "  [$index] id=${shortcut.id}, label=${shortcut.shortLabel}")
             }
@@ -82,52 +81,8 @@ object ShortcutHook {
             val exists = afterShortcuts.any { it.id == MainHook.SHORTCUT_ID }
             LogUtils.i(TAG, "添加后验证: ${if (exists) "成功" else "失败"}，当前共 ${afterShortcuts.size} 个快捷方式")
 
-            // 添加导出日志的快捷方式
-            ensureExportLogShortcut(context, shortcutManager)
-
         } catch (e: Exception) {
             LogUtils.e(TAG, "确保快捷方式存在时出错", e)
-        }
-    }
-
-    /**
-     * 确保导出日志的快捷方式存在
-     */
-    @RequiresApi(Build.VERSION_CODES.N_MR1)
-    private fun ensureExportLogShortcut(context: Context, shortcutManager: ShortcutManager) {
-        try {
-            val exportShortcutId = "alipay_restart_export_log"
-
-            // 检查是否已存在
-            if (shortcutManager.dynamicShortcuts.any { it.id == exportShortcutId }) {
-                return
-            }
-
-            LogUtils.i(TAG, "添加导出日志快捷方式...")
-
-            // 创建导出日志 Intent
-            val exportIntent = Intent().apply {
-                component = ComponentName(
-                    MainHook.MODULE_PACKAGE,
-                    "${MainHook.MODULE_PACKAGE}.RestartActivity"
-                )
-                action = "com.example.alipayrestart.EXPORT_LOG"
-                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
-            }
-
-            val exportShortcut = ShortcutInfo.Builder(context, exportShortcutId)
-                .setShortLabel("导出日志")
-                .setLongLabel("导出模块运行日志")
-                .setIntent(exportIntent)
-                .setRank(1)
-                .setIcon(Icon.createWithResource(context, android.R.drawable.ic_menu_save))
-                .build()
-
-            shortcutManager.addDynamicShortcuts(listOf(exportShortcut))
-            LogUtils.i(TAG, "导出日志快捷方式添加成功")
-
-        } catch (e: Exception) {
-            LogUtils.e(TAG, "添加导出日志快捷方式失败", e)
         }
     }
 }
