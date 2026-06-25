@@ -14,26 +14,42 @@ import java.util.Locale
 /**
  * 自定义 Application 类
  * 用于早期日志初始化和全局异常捕获
+ * 日志保存在应用专属外部存储目录，不需要权限，文件管理器可直接访问
  */
 class App : Application() {
 
     companion object {
         private const val TAG = "App"
-        private const val LOG_DIR = "AlipayRestart"
+        private const val LOG_DIR = "logs"
         private const val CRASH_LOG_PREFIX = "crash_"
         private const val EARLY_LOG_PREFIX = "early_"
         private const val LOG_SUFFIX = ".txt"
 
-        // 早期日志文件（使用内部存储，不需要权限）
+        // 早期日志文件
         private var earlyLogFile: File? = null
         private var earlyLogInitialized = false
+
+        // 外部存储日志目录
+        private var externalLogDir: File? = null
+
+        /**
+         * 获取日志目录路径（给用户看的）
+         */
+        fun getLogDirPath(context: Context): String {
+            return try {
+                val dir = getExternalLogDir(context)
+                dir?.absolutePath ?: "未知路径"
+            } catch (e: Exception) {
+                "未知路径"
+            }
+        }
 
         /**
          * 获取早期日志文件列表
          */
         fun getEarlyLogFiles(context: Context): Array<File>? {
             return try {
-                val logDir = File(context.filesDir, LOG_DIR)
+                val logDir = getExternalLogDir(context) ?: return null
                 if (logDir.exists() && logDir.isDirectory) {
                     logDir.listFiles { _, name ->
                         (name.startsWith(EARLY_LOG_PREFIX) || name.startsWith(CRASH_LOG_PREFIX))
@@ -49,42 +65,41 @@ class App : Application() {
         }
 
         /**
-         * 将早期日志复制到外部存储
+         * 获取外部存储日志目录
+         */
+        private fun getExternalLogDir(context: Context): File? {
+            return try {
+                // 应用专属外部存储目录，不需要权限
+                val externalFilesDir = context.getExternalFilesDir(null) ?: return null
+                val logDir = File(externalFilesDir, LOG_DIR)
+                if (!logDir.exists()) {
+                    logDir.mkdirs()
+                }
+                logDir
+            } catch (e: Exception) {
+                null
+            }
+        }
+
+        /**
+         * 将早期日志复制到外部存储（保留兼容，现在直接写到外部存储了）
          */
         fun copyEarlyLogsToExternal(context: Context) {
-            try {
-                val earlyLogs = getEarlyLogFiles(context) ?: return
-                val externalDir = File(Environment.getExternalStorageDirectory(), LOG_DIR)
-                if (!externalDir.exists()) {
-                    externalDir.mkdirs()
-                }
-
-                earlyLogs.forEach { logFile ->
-                    try {
-                        val destFile = File(externalDir, logFile.name)
-                        if (!destFile.exists()) {
-                            logFile.copyTo(destFile, overwrite = false)
-                        }
-                    } catch (e: Exception) {
-                        // 静默失败
-                    }
-                }
-            } catch (e: Exception) {
-                // 静默失败
-            }
+            // 现在日志直接写到外部存储了，这个方法保留为空实现
         }
     }
 
     override fun onCreate() {
         super.onCreate()
 
-        // 1. 最先初始化早期日志（使用内部存储，不需要权限）
+        // 1. 最先初始化早期日志（使用应用专属外部存储，不需要权限）
         initEarlyLog()
 
         // 2. 记录应用启动
         logEarly("========== 应用启动 ==========")
         logEarly("时间: ${getCurrentTime()}")
         logEarly("包名: $packageName")
+        logEarly("日志目录: ${externalLogDir?.absolutePath}")
         logEarly("==============================")
 
         // 3. 设置全局异常捕获
@@ -102,21 +117,18 @@ class App : Application() {
     }
 
     /**
-     * 初始化早期日志（使用内部存储）
+     * 初始化早期日志（使用应用专属外部存储，不需要权限）
      */
     private fun initEarlyLog() {
         if (earlyLogInitialized) return
 
         try {
-            val logDir = File(filesDir, LOG_DIR)
-            if (!logDir.exists()) {
-                logDir.mkdirs()
+            externalLogDir = getExternalLogDir(this)
+            if (externalLogDir != null) {
+                val timeStamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
+                earlyLogFile = File(externalLogDir, "$EARLY_LOG_PREFIX$timeStamp$LOG_SUFFIX")
+                earlyLogInitialized = true
             }
-
-            val timeStamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
-            earlyLogFile = File(logDir, "$EARLY_LOG_PREFIX$timeStamp$LOG_SUFFIX")
-
-            earlyLogInitialized = true
         } catch (e: Exception) {
             // 静默失败
         }
@@ -131,6 +143,7 @@ class App : Application() {
         try {
             val timeStamp = SimpleDateFormat("HH:mm:ss.SSS", Locale.getDefault()).format(Date())
             val logLine = "[$timeStamp] $message\n"
+
             FileWriter(earlyLogFile, true).use {
                 it.write(logLine)
             }
@@ -159,7 +172,6 @@ class App : Application() {
                 throwable.printStackTrace(PrintWriter(sw))
                 val stackTrace = sw.toString()
                 logEarly(stackTrace)
-
                 logEarly("==============================")
 
                 // 同时保存单独的崩溃日志文件
@@ -181,7 +193,7 @@ class App : Application() {
      */
     private fun saveCrashLog(throwable: Throwable) {
         try {
-            val logDir = File(filesDir, LOG_DIR)
+            val logDir = externalLogDir ?: return
             if (!logDir.exists()) {
                 logDir.mkdirs()
             }
@@ -207,6 +219,8 @@ class App : Application() {
             FileWriter(crashFile).use {
                 it.write(crashContent)
             }
+
+            logEarly("崩溃日志已保存: ${crashFile.absolutePath}")
 
         } catch (e: Exception) {
             // 静默失败
