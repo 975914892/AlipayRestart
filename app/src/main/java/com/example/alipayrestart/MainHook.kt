@@ -17,11 +17,13 @@ class MainHook : IXposedHookLoadPackage {
 
         // 支付宝包名
         const val TARGET_PACKAGE = "com.eg.android.AlipayGphone"
+        // 模块自身包名
+        const val MODULE_PACKAGE = "com.example.alipayrestart"
     }
 
     override fun handleLoadPackage(lpparam: XC_LoadPackage.LoadPackageParam) {
         // 只处理模块自身的包
-        if (lpparam.packageName != BuildConfig.APPLICATION_ID) return
+        if (lpparam.packageName != MODULE_PACKAGE) return
 
         try {
             // 标记模块已激活
