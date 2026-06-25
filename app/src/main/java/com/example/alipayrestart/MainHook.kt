@@ -5,7 +5,6 @@ import android.content.pm.ShortcutManager
 import android.os.Build
 import androidx.annotation.RequiresApi
 import de.robv.android.xposed.IXposedHookLoadPackage
-import de.robv.android.xposed.XposedBridge
 import de.robv.android.xposed.XposedHelpers
 import de.robv.android.xposed.callbacks.XC_LoadPackage
 
@@ -15,6 +14,8 @@ import de.robv.android.xposed.callbacks.XC_LoadPackage
  */
 class MainHook : IXposedHookLoadPackage {
 
+    private val TAG = "MainHook"
+
     @RequiresApi(Build.VERSION_CODES.N_MR1)
     override fun handleLoadPackage(lpparam: XC_LoadPackage.LoadPackageParam) {
         // 只处理支付宝包
@@ -22,7 +23,10 @@ class MainHook : IXposedHookLoadPackage {
             return
         }
 
-        XposedBridge.log("AlipayRestart: 支付宝进程加载成功，开始注入...")
+        // 初始化日志
+        LogUtils.init()
+        LogUtils.i(TAG, "支付宝进程加载成功，开始注入...")
+        LogUtils.i(TAG, "进程名: ${lpparam.processName}")
 
         try {
             // Hook Application 的 onCreate 方法
@@ -33,22 +37,23 @@ class MainHook : IXposedHookLoadPackage {
                 object : de.robv.android.xposed.XC_MethodHook() {
                     override fun afterHookedMethod(param: MethodHookParam) {
                         val context = param.thisObject as Context
-                        XposedBridge.log("AlipayRestart: Application onCreate 触发")
+                        LogUtils.i(TAG, "Application.onCreate 触发")
 
                         // 延迟添加快捷方式
                         android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
                             try {
+                                LogUtils.d(TAG, "开始添加初始快捷方式")
                                 ShortcutHook.ensureRestartShortcut(context)
-                                XposedBridge.log("AlipayRestart: 初始快捷方式添加完成")
+                                LogUtils.i(TAG, "初始快捷方式添加完成")
                             } catch (e: Exception) {
-                                XposedBridge.log("AlipayRestart: 初始添加快捷方式失败 - ${e.message}")
+                                LogUtils.e(TAG, "初始添加快捷方式失败", e)
                             }
                         }, 3000)
                     }
                 }
             )
 
-            // Hook ShortcutManager 的 setDynamicShortcuts 方法，防止支付宝覆盖我们的快捷方式
+            // Hook ShortcutManager 的方法，防止支付宝覆盖我们的快捷方式
             try {
                 val shortcutManagerClass = lpparam.classLoader.loadClass("android.content.pm.ShortcutManager")
 
@@ -58,15 +63,22 @@ class MainHook : IXposedHookLoadPackage {
                     "setDynamicShortcuts",
                     MutableList::class.java,
                     object : de.robv.android.xposed.XC_MethodHook() {
+                        override fun beforeHookedMethod(param: MethodHookParam) {
+                            val shortcutList = param.args[0] as? List<*>
+                            LogUtils.d(TAG, "检测到 setDynamicShortcuts 调用，传入 ${shortcutList?.size ?: 0} 个快捷方式")
+                        }
+
                         override fun afterHookedMethod(param: MethodHookParam) {
                             try {
                                 val context = getContextFromShortcutManager(param.thisObject)
                                 if (context != null) {
-                                    XposedBridge.log("AlipayRestart: 检测到 setDynamicShortcuts 调用，重新添加快捷方式")
+                                    LogUtils.i(TAG, "setDynamicShortcuts 调用完成，重新添加我们的快捷方式")
                                     ShortcutHook.ensureRestartShortcut(context)
+                                } else {
+                                    LogUtils.e(TAG, "无法从 ShortcutManager 获取 Context")
                                 }
                             } catch (e: Exception) {
-                                XposedBridge.log("AlipayRestart: setDynamicShortcuts hook 失败 - ${e.message}")
+                                LogUtils.e(TAG, "setDynamicShortcuts hook 失败", e)
                             }
                         }
                     }
@@ -85,20 +97,19 @@ class MainHook : IXposedHookLoadPackage {
                                     ShortcutHook.ensureRestartShortcut(context)
                                 }
                             } catch (e: Exception) {
-                                // 静默失败
+                                LogUtils.e(TAG, "addDynamicShortcuts hook 失败", e)
                             }
                         }
                     }
                 )
 
-                XposedBridge.log("AlipayRestart: ShortcutManager hook 成功")
+                LogUtils.i(TAG, "ShortcutManager hook 成功")
             } catch (e: Exception) {
-                XposedBridge.log("AlipayRestart: Hook ShortcutManager 失败 - ${e.message}")
+                LogUtils.e(TAG, "Hook ShortcutManager 失败", e)
             }
 
         } catch (e: Exception) {
-            XposedBridge.log("AlipayRestart: Hook 初始化失败 - ${e.message}")
-            e.printStackTrace()
+            LogUtils.e(TAG, "Hook 初始化失败", e)
         }
     }
 
