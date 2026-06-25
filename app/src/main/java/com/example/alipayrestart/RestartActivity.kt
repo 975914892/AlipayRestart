@@ -65,8 +65,8 @@ class RestartActivity : Activity() {
                 LogUtils.d(TAG, "force-stop 输出: $forceStopResult")
 
                 // 确认进程是否已停止
-                val checkProcess = RootUtils.executeCommand("ps | grep ${ModuleStatus.TARGET_PACKAGE}")
-                LogUtils.d(TAG, "进程检查结果: ${if (checkProcess.isBlank()) "已停止" else "仍在运行"}")
+                val checkStopped = isProcessRunning(ModuleStatus.TARGET_PACKAGE)
+                LogUtils.d(TAG, "进程检查结果: ${if (checkStopped) "仍在运行" else "已停止"}")
 
                 // 等待应用完全停止，给系统足够时间清理
                 LogUtils.d(TAG, "等待 1500ms 让系统清理...")
@@ -76,36 +76,48 @@ class RestartActivity : Activity() {
                 var started = false
                 var startMethod = ""
 
-                // 方式1：用 PackageManager 获取官方启动 Intent（最可靠）
+                // 方式1：用 monkey 命令启动（最可靠，能启动停止状态的应用）
                 try {
-                    LogUtils.i(TAG, "尝试方式1: PackageManager 获取启动 Intent")
-                    val launchIntent = packageManager.getLaunchIntentForPackage(ModuleStatus.TARGET_PACKAGE)
-                    if (launchIntent != null) {
-                        LogUtils.d(TAG, "启动 Intent: $launchIntent")
-                        launchIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
-                        startActivity(launchIntent)
-                        started = true
-                        startMethod = "PackageManager"
-                        LogUtils.i(TAG, "方式1 启动成功")
+                    LogUtils.i(TAG, "尝试方式1: monkey 命令")
+                    val result = RootUtils.executeCommand(
+                        "monkey -p ${ModuleStatus.TARGET_PACKAGE} -c android.intent.category.LAUNCHER 1"
+                    )
+                    LogUtils.d(TAG, "方式1 输出: $result")
+                    if (result.contains("Events injected: 1")) {
+                        // 等待一下，然后检查进程
+                        Thread.sleep(1000)
+                        if (isProcessRunning(ModuleStatus.TARGET_PACKAGE)) {
+                            started = true
+                            startMethod = "monkey"
+                            LogUtils.i(TAG, "方式1 启动成功")
+                        } else {
+                            LogUtils.w(TAG, "方式1 命令执行成功但进程未启动")
+                        }
                     } else {
-                        LogUtils.w(TAG, "方式1 失败: 无法获取启动 Intent")
+                        LogUtils.w(TAG, "方式1 失败")
                     }
                 } catch (e: Exception) {
                     LogUtils.e(TAG, "方式1 启动异常", e)
                 }
 
-                // 方式2：用 am start 命令启动
+                // 方式2：用 am start 命令，加上 --include-stopped-packages
                 if (!started) {
                     try {
-                        LogUtils.i(TAG, "尝试方式2: am start 命令")
+                        LogUtils.i(TAG, "尝试方式2: am start 命令（含停止包）")
                         val result = RootUtils.executeCommand(
-                            "am start -n ${ModuleStatus.TARGET_PACKAGE}/com.eg.android.AlipayGphone.AlipayLoginActivity"
+                            "am start --include-stopped-packages -n ${ModuleStatus.TARGET_PACKAGE}/com.eg.android.AlipayGphone.AlipayLoginActivity"
                         )
                         LogUtils.d(TAG, "方式2 输出: $result")
                         if (!result.contains("Error")) {
-                            started = true
-                            startMethod = "am start"
-                            LogUtils.i(TAG, "方式2 启动成功")
+                            // 等待一下，然后检查进程
+                            Thread.sleep(1000)
+                            if (isProcessRunning(ModuleStatus.TARGET_PACKAGE)) {
+                                started = true
+                                startMethod = "am start"
+                                LogUtils.i(TAG, "方式2 启动成功")
+                            } else {
+                                LogUtils.w(TAG, "方式2 命令执行成功但进程未启动")
+                            }
                         } else {
                             LogUtils.w(TAG, "方式2 失败: $result")
                         }
@@ -114,20 +126,26 @@ class RestartActivity : Activity() {
                     }
                 }
 
-                // 方式3：用 monkey 命令启动（备用）
+                // 方式3：用 PackageManager 获取官方启动 Intent
                 if (!started) {
                     try {
-                        LogUtils.i(TAG, "尝试方式3: monkey 命令")
-                        val result = RootUtils.executeCommand(
-                            "monkey -p ${ModuleStatus.TARGET_PACKAGE} -c android.intent.category.LAUNCHER 1"
-                        )
-                        LogUtils.d(TAG, "方式3 输出: $result")
-                        if (result.contains("Events injected: 1")) {
-                            started = true
-                            startMethod = "monkey"
-                            LogUtils.i(TAG, "方式3 启动成功")
+                        LogUtils.i(TAG, "尝试方式3: PackageManager 获取启动 Intent")
+                        val launchIntent = packageManager.getLaunchIntentForPackage(ModuleStatus.TARGET_PACKAGE)
+                        if (launchIntent != null) {
+                            LogUtils.d(TAG, "启动 Intent: $launchIntent")
+                            launchIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
+                            startActivity(launchIntent)
+                            // 等待一下，然后检查进程
+                            Thread.sleep(1000)
+                            if (isProcessRunning(ModuleStatus.TARGET_PACKAGE)) {
+                                started = true
+                                startMethod = "PackageManager"
+                                LogUtils.i(TAG, "方式3 启动成功")
+                            } else {
+                                LogUtils.w(TAG, "方式3 命令执行成功但进程未启动")
+                            }
                         } else {
-                            LogUtils.w(TAG, "方式3 失败")
+                            LogUtils.w(TAG, "方式3 失败: 无法获取启动 Intent")
                         }
                     } catch (e: Exception) {
                         LogUtils.e(TAG, "方式3 启动异常", e)
@@ -139,13 +157,19 @@ class RestartActivity : Activity() {
                     try {
                         LogUtils.i(TAG, "尝试方式4: am start action 方式")
                         val result = RootUtils.executeCommand(
-                            "am start -a android.intent.action.MAIN -c android.intent.category.LAUNCHER -p ${ModuleStatus.TARGET_PACKAGE}"
+                            "am start --include-stopped-packages -a android.intent.action.MAIN -c android.intent.category.LAUNCHER -p ${ModuleStatus.TARGET_PACKAGE}"
                         )
                         LogUtils.d(TAG, "方式4 输出: $result")
                         if (!result.contains("Error")) {
-                            started = true
-                            startMethod = "am start action"
-                            LogUtils.i(TAG, "方式4 启动成功")
+                            // 等待一下，然后检查进程
+                            Thread.sleep(1000)
+                            if (isProcessRunning(ModuleStatus.TARGET_PACKAGE)) {
+                                started = true
+                                startMethod = "am start action"
+                                LogUtils.i(TAG, "方式4 启动成功")
+                            } else {
+                                LogUtils.w(TAG, "方式4 命令执行成功但进程未启动")
+                            }
                         } else {
                             LogUtils.w(TAG, "方式4 失败: $result")
                         }
@@ -179,6 +203,21 @@ class RestartActivity : Activity() {
                 }
             }
         }.start()
+    }
+
+    /**
+     * 检查进程是否正在运行
+     */
+    private fun isProcessRunning(packageName: String): Boolean {
+        return try {
+            val result = RootUtils.executeCommand("ps -A | grep $packageName")
+            val running = result.isNotBlank() && result.contains(packageName)
+            LogUtils.d(TAG, "检查进程 $packageName: ${if (running) "运行中" else "未运行"}")
+            running
+        } catch (e: Exception) {
+            LogUtils.e(TAG, "检查进程失败", e)
+            false
+        }
     }
 
     /**

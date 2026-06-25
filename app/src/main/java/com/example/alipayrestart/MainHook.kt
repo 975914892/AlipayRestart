@@ -21,8 +21,8 @@ class MainHook : IXposedHookLoadPackage {
         if (lpparam.packageName != MODULE_PACKAGE) return
 
         try {
-            // 标记模块已激活（通过独立的状态类，避免外部直接引用 MainHook）
-            ModuleStatus.isActivated = true
+            // 标记模块已激活（通过文件标记方式，解决不同 ClassLoader 不共享的问题）
+            ModuleActivation.markActivatedWithDataDir(lpparam.appInfo.dataDir)
 
             // 初始化日志
             LogUtils.init()

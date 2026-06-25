@@ -203,10 +203,10 @@ class MainActivity : AppCompatActivity() {
      * 检查模块是否激活
      */
     private fun checkModuleStatus() {
-        // 通过 ModuleStatus 判断模块是否激活
-        // 只有当模块作用域包含自身包名时，这个变量才会被设为 true
+        // 通过文件标记判断模块是否激活
+        // 只有当模块作用域包含自身包名时，MainHook 才会创建标记文件
         try {
-            if (ModuleStatus.isActivated) {
+            if (ModuleActivation.isActivated(this)) {
                 tvModuleStatus.text = "✅ 模块已激活"
                 tvModuleStatus.setTextColor(getColor(android.R.color.holo_green_dark))
                 tvModuleTip.text = "模块运行正常，LSPosed API 102"
