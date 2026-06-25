@@ -4,6 +4,9 @@ import android.Manifest
 import android.app.Activity
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.content.pm.ShortcutInfo
+import android.content.pm.ShortcutManager
+import android.graphics.drawable.Icon
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
@@ -24,6 +27,8 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var tvModuleStatus: TextView
     private lateinit var tvModuleTip: TextView
+    private lateinit var btnRestartNow: Button
+    private lateinit var btnCreateShortcut: Button
     private lateinit var switchLogEnable: Switch
     private lateinit var tvLogPath: TextView
     private lateinit var btnViewLog: Button
@@ -33,6 +38,7 @@ class MainActivity : AppCompatActivity() {
     private val configDir: File by lazy {
         File(Environment.getExternalStorageDirectory(), "AlipayRestart")
     }
+
     private val configFile: File by lazy {
         File(configDir, "config.json")
     }
@@ -40,6 +46,7 @@ class MainActivity : AppCompatActivity() {
     companion object {
         private const val REQUEST_STORAGE_PERMISSION = 1001
         private const val REQUEST_EXPORT_LOG = 1002
+        private const val SHORTCUT_ID = "alipay_restart_desktop_shortcut"
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -49,11 +56,16 @@ class MainActivity : AppCompatActivity() {
         // 初始化视图
         tvModuleStatus = findViewById(R.id.tvModuleStatus)
         tvModuleTip = findViewById(R.id.tvModuleTip)
+        btnRestartNow = findViewById(R.id.btnRestartNow)
+        btnCreateShortcut = findViewById(R.id.btnCreateShortcut)
         switchLogEnable = findViewById(R.id.switchLogEnable)
         tvLogPath = findViewById(R.id.tvLogPath)
         btnViewLog = findViewById(R.id.btnViewLog)
         btnExportLog = findViewById(R.id.btnExportLog)
         btnClearLog = findViewById(R.id.btnClearLog)
+
+        // 初始化日志
+        LogUtils.init()
 
         // 检查模块状态
         checkModuleStatus()
@@ -65,6 +77,14 @@ class MainActivity : AppCompatActivity() {
         loadConfig()
 
         // 设置点击事件
+        btnRestartNow.setOnClickListener {
+            restartAlipay()
+        }
+
+        btnCreateShortcut.setOnClickListener {
+            createDesktopShortcut()
+        }
+
         switchLogEnable.setOnCheckedChangeListener { _, isChecked ->
             saveConfig(isChecked)
             Toast.makeText(this, "日志记录已${if (isChecked) "开启" else "关闭"}", Toast.LENGTH_SHORT).show()
@@ -90,18 +110,78 @@ class MainActivity : AppCompatActivity() {
      * 检查模块是否激活
      */
     private fun checkModuleStatus() {
-        // 通过尝试读取一个 Hook 标记来判断模块是否激活
-        try {
-            // 如果模块被激活，MainHook 会设置这个标记
-            val clazz = Class.forName("com.example.alipayrestart.MainHook")
-            // 如果能加载到类，说明模块可能已激活（但不一定作用于正确的包）
-            tvModuleStatus.text = "✅ 模块已安装"
+        // 通过 MainHook 的静态变量判断模块是否激活
+        // 只有当模块作用域包含自身包名时，这个变量才会被设为 true
+        if (MainHook.isModuleActivated) {
+            tvModuleStatus.text = "✅ 模块已激活"
             tvModuleStatus.setTextColor(getColor(android.R.color.holo_green_dark))
-            tvModuleTip.text = "请在 LSPosed 中确认作用域已选择支付宝"
-        } catch (e: ClassNotFoundException) {
+            tvModuleTip.text = "模块运行正常，LSPosed API 102"
+        } else {
             tvModuleStatus.text = "❌ 模块未激活"
             tvModuleStatus.setTextColor(getColor(android.R.color.holo_red_dark))
-            tvModuleTip.text = "请在 LSPosed 中启用本模块，作用域选择支付宝"
+            tvModuleTip.text = "请在 LSPosed 中启用本模块，然后重启应用"
+        }
+    }
+
+    /**
+     * 立即重启支付宝
+     */
+    private fun restartAlipay() {
+        val intent = Intent(this, RestartActivity::class.java)
+        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        startActivity(intent)
+    }
+
+    /**
+     * 创建桌面快捷方式
+     */
+    private fun createDesktopShortcut() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val shortcutManager = getSystemService(ShortcutManager::class.java) ?: run {
+                Toast.makeText(this, "无法获取 ShortcutManager", Toast.LENGTH_SHORT).show()
+                return
+            }
+
+            // 检查是否支持固定快捷方式
+            if (!shortcutManager.isRequestPinShortcutSupported) {
+                Toast.makeText(this, "当前设备不支持创建桌面快捷方式", Toast.LENGTH_LONG).show()
+                return
+            }
+
+            // 创建快捷方式 Intent - 直接启动 RestartActivity
+            val shortcutIntent = Intent(this, RestartActivity::class.java).apply {
+                action = Intent.ACTION_VIEW
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+            }
+
+            // 构建快捷方式信息
+            val shortcutInfo = ShortcutInfo.Builder(this, SHORTCUT_ID)
+                .setShortLabel("重启支付宝")
+                .setLongLabel("强行停止并重启支付宝")
+                .setIcon(Icon.createWithResource(this, R.drawable.ic_restart))
+                .setIntent(shortcutIntent)
+                .build()
+
+            // 请求固定快捷方式
+            shortcutManager.requestPinShortcut(shortcutInfo, null)
+            Toast.makeText(this, "请在弹出的对话框中确认添加", Toast.LENGTH_SHORT).show()
+
+        } else {
+            // 旧版本兼容方式
+            val shortcutIntent = Intent(this, RestartActivity::class.java).apply {
+                action = Intent.ACTION_MAIN
+            }
+
+            val addIntent = Intent("com.android.launcher.action.INSTALL_SHORTCUT").apply {
+                putExtra(Intent.EXTRA_SHORTCUT_NAME, "重启支付宝")
+                putExtra(Intent.EXTRA_SHORTCUT_ICON_RESOURCE,
+                    Intent.ShortcutIconResource.fromContext(this@MainActivity, R.drawable.ic_restart))
+                putExtra(Intent.EXTRA_SHORTCUT_INTENT, shortcutIntent)
+                putExtra("duplicate", false)
+            }
+
+            sendBroadcast(addIntent)
+            Toast.makeText(this, "已尝试创建桌面快捷方式", Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -217,7 +297,6 @@ class MainActivity : AppCompatActivity() {
             }
 
             startActivity(Intent.createChooser(intent, "查看日志"))
-
         } catch (e: Exception) {
             Toast.makeText(this, "打开日志失败: ${e.message}", Toast.LENGTH_LONG).show()
         }
@@ -244,7 +323,6 @@ class MainActivity : AppCompatActivity() {
             }
 
             startActivityForResult(intent, REQUEST_EXPORT_LOG)
-
         } catch (e: Exception) {
             Toast.makeText(this, "导出失败: ${e.message}", Toast.LENGTH_LONG).show()
         }
@@ -269,7 +347,6 @@ class MainActivity : AppCompatActivity() {
             }
 
             Toast.makeText(this, "已清理 $count 个日志文件", Toast.LENGTH_SHORT).show()
-
         } catch (e: Exception) {
             Toast.makeText(this, "清理失败: ${e.message}", Toast.LENGTH_LONG).show()
         }

@@ -48,10 +48,10 @@
             android:value="true" />
         <meta-data
             android:name="xposeddescription"
-            android:value="一键重启支付宝 - 长按图标快捷重启" />
+            android:value="一键重启支付宝 - 桌面快捷方式一键强行停止并重启" />
         <meta-data
             android:name="xposedminversion"
-            android:value="82" />
+            android:value="102" />
         <meta-data
             android:name="xposedscope"
             android:resource="@array/xposed_scope" />

@@ -1,5 +1,6 @@
 <resources>
     <string-array name="xposed_scope">
-        <item>com.eg.android.AlipayGphone</item>
+        <!-- 模块自身，用于检测模块是否激活 -->
+        <item>com.example.alipayrestart</item>
     </string-array>
 </resources>

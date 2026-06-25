@@ -37,8 +37,8 @@ android {
 
 dependencies {
     // LSPosed API
-    compileOnly("de.robv.android.xposed:api:82")
-    compileOnly("de.robv.android.xposed:api:82:sources")
+    compileOnly("de.robv.android.xposed:api:102")
+    compileOnly("de.robv.android.xposed:api:102:sources")
 
     // AndroidX
     implementation("androidx.core:core-ktx:1.12.0")

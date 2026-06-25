@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:padding="16dp">
@@ -25,8 +26,7 @@
             android:layout_height="wrap_content"
             android:layout_marginBottom="16dp"
             app:cardCornerRadius="12dp"
-            app:cardElevation="4dp"
-            xmlns:app="http://schemas.android.com/apk/res-auto">
+            app:cardElevation="4dp">
 
             <LinearLayout
                 android:layout_width="match_parent"
@@ -54,11 +54,53 @@
                     android:id="@+id/tvModuleTip"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="请在 LSPosed 中启用本模块，作用域选择支付宝"
+                    android:text="请在 LSPosed 中启用本模块"
                     android:textSize="12sp"
                     android:textColor="@android:color/darker_gray"
                     android:layout_marginTop="4dp" />
+            </LinearLayout>
+        </androidx.cardview.widget.CardView>
 
+        <!-- 快捷操作卡片 -->
+        <androidx.cardview.widget.CardView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="16dp"
+            app:cardCornerRadius="12dp"
+            app:cardElevation="4dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="16dp">
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="快捷操作"
+                    android:textSize="16sp"
+                    android:textStyle="bold"
+                    android:layout_marginBottom="12dp" />
+
+                <!-- 立即重启按钮 -->
+                <Button
+                    android:id="@+id/btnRestartNow"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="立即重启支付宝"
+                    android:textSize="16sp"
+                    android:layout_marginBottom="12dp"
+                    android:backgroundTint="@android:color/holo_blue_dark" />
+
+                <!-- 创建桌面快捷方式按钮 -->
+                <Button
+                    android:id="@+id/btnCreateShortcut"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="创建桌面快捷方式"
+                    android:textSize="14sp"
+                    style="@style/Widget.AppCompat.Button.Borderless" />
             </LinearLayout>
         </androidx.cardview.widget.CardView>
 
@@ -68,8 +110,7 @@
             android:layout_height="wrap_content"
             android:layout_marginBottom="16dp"
             app:cardCornerRadius="12dp"
-            app:cardElevation="4dp"
-            xmlns:app="http://schemas.android.com/apk/res-auto">
+            app:cardElevation="4dp">
 
             <LinearLayout
                 android:layout_width="match_parent"
@@ -111,14 +152,12 @@
                             android:text="记录模块运行日志，方便排查问题"
                             android:textSize="12sp"
                             android:textColor="@android:color/darker_gray" />
-
                     </LinearLayout>
 
                     <Switch
                         android:id="@+id/switchLogEnable"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content" />
-
                 </LinearLayout>
 
                 <!-- 日志位置 -->
@@ -155,7 +194,6 @@
                     android:text="清理所有日志"
                     style="@style/Widget.AppCompat.Button.Borderless"
                     android:textColor="@android:color/holo_red_dark" />
-
             </LinearLayout>
         </androidx.cardview.widget.CardView>
 
@@ -164,8 +202,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             app:cardCornerRadius="12dp"
-            app:cardElevation="4dp"
-            xmlns:app="http://schemas.android.com/apk/res-auto">
+            app:cardElevation="4dp">
 
             <LinearLayout
                 android:layout_width="match_parent"
@@ -184,13 +221,11 @@
                 <TextView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="1. 在 LSPosed 中启用本模块\n2. 作用域选择「支付宝」\n3. 重启支付宝（或重启手机）\n4. 长按支付宝图标，点击「重启支付宝」即可\n\n注意：需要 Root 权限才能使用强行停止功能"
+                    android:text="1. 在 LSPosed 中启用本模块\n2. 作用域选择「一键重启支付宝」（模块自身）\n3. 重启应用后模块状态会显示已激活\n4. 点击「创建桌面快捷方式」添加到桌面\n5. 点击桌面快捷方式即可一键重启支付宝\n\n注意：需要 Root 权限才能使用强行停止功能"
                     android:textSize="13sp"
                     android:lineSpacingExtra="4dp"
                     android:textColor="@android:color/darker_gray" />
-
             </LinearLayout>
         </androidx.cardview.widget.CardView>
-
     </LinearLayout>
 </ScrollView>
