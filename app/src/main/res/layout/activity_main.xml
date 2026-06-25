@@ -3,61 +3,94 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:padding="16dp">
+    android:background="@color/background"
+    android:padding="20dp">
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical">
 
-        <!-- 标题 -->
-        <TextView
+        <!-- 标题区域 -->
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="一键重启支付宝"
-            android:textSize="24sp"
-            android:textStyle="bold"
-            android:gravity="center"
-            android:layout_marginBottom="24dp" />
+            android:orientation="vertical"
+            android:layout_marginTop="32dp"
+            android:layout_marginBottom="40dp">
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="一键重启"
+                android:textSize="32sp"
+                android:textStyle="bold"
+                android:textColor="@color/text_primary"
+                android:fontFamily="sans-serif-medium" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="支付宝"
+                android:textSize="32sp"
+                android:textStyle="bold"
+                android:textColor="@color/text_primary"
+                android:fontFamily="sans-serif-medium"
+                android:layout_marginTop="2dp" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="桌面快捷方式 · 一键强行停止并重启"
+                android:textSize="14sp"
+                android:textColor="@color/text_secondary"
+                android:layout_marginTop="12dp" />
+        </LinearLayout>
 
         <!-- 模块状态卡片 -->
         <androidx.cardview.widget.CardView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginBottom="16dp"
-            app:cardCornerRadius="12dp"
-            app:cardElevation="4dp">
+            android:layout_marginBottom="20dp"
+            app:cardCornerRadius="16dp"
+            app:cardElevation="0dp"
+            app:cardBackgroundColor="@color/card_background"
+            app:strokeColor="@color/divider"
+            app:strokeWidth="1dp">
 
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
-                android:padding="16dp">
+                android:padding="20dp">
 
                 <TextView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:text="模块状态"
-                    android:textSize="16sp"
-                    android:textStyle="bold"
-                    android:layout_marginBottom="8dp" />
+                    android:textSize="12sp"
+                    android:textColor="@color/text_hint"
+                    android:layout_marginBottom="8dp"
+                    android:letterSpacing="0.05" />
 
                 <TextView
                     android:id="@+id/tvModuleStatus"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="正在检测模块是否激活..."
-                    android:textSize="14sp"
-                    android:textColor="@android:color/darker_gray" />
+                    android:text="检测中..."
+                    android:textSize="18sp"
+                    android:textStyle="medium"
+                    android:textColor="@color/text_primary"
+                    android:fontFamily="sans-serif-medium" />
 
                 <TextView
                     android:id="@+id/tvModuleTip"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:text="请在 LSPosed 中启用本模块"
-                    android:textSize="12sp"
-                    android:textColor="@android:color/darker_gray"
-                    android:layout_marginTop="4dp" />
+                    android:textSize="13sp"
+                    android:textColor="@color/text_secondary"
+                    android:layout_marginTop="6dp" />
             </LinearLayout>
         </androidx.cardview.widget.CardView>
 
@@ -65,42 +98,51 @@
         <androidx.cardview.widget.CardView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginBottom="16dp"
-            app:cardCornerRadius="12dp"
-            app:cardElevation="4dp">
+            android:layout_marginBottom="20dp"
+            app:cardCornerRadius="16dp"
+            app:cardElevation="0dp"
+            app:cardBackgroundColor="@color/card_background"
+            app:strokeColor="@color/divider"
+            app:strokeWidth="1dp">
 
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
-                android:padding="16dp">
+                android:padding="20dp">
 
                 <TextView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:text="快捷操作"
-                    android:textSize="16sp"
-                    android:textStyle="bold"
-                    android:layout_marginBottom="12dp" />
+                    android:textSize="12sp"
+                    android:textColor="@color/text_hint"
+                    android:layout_marginBottom="16dp"
+                    android:letterSpacing="0.05" />
 
                 <!-- 立即重启按钮 -->
                 <Button
                     android:id="@+id/btnRestartNow"
                     android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
+                    android:layout_height="52dp"
                     android:text="立即重启支付宝"
                     android:textSize="16sp"
+                    android:textStyle="medium"
+                    android:textColor="@color/button_primary_text"
+                    android:background="@drawable/btn_primary_background"
                     android:layout_marginBottom="12dp"
-                    android:backgroundTint="@android:color/holo_blue_dark" />
+                    android:fontFamily="sans-serif-medium" />
 
                 <!-- 创建桌面快捷方式按钮 -->
                 <Button
                     android:id="@+id/btnCreateShortcut"
                     android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
+                    android:layout_height="52dp"
                     android:text="创建桌面快捷方式"
-                    android:textSize="14sp"
-                    style="@style/Widget.AppCompat.Button.Borderless" />
+                    android:textSize="15sp"
+                    android:textColor="@color/button_secondary_text"
+                    android:background="@drawable/btn_secondary_background"
+                    android:fontFamily="sans-serif-medium" />
             </LinearLayout>
         </androidx.cardview.widget.CardView>
 
@@ -108,23 +150,27 @@
         <androidx.cardview.widget.CardView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginBottom="16dp"
-            app:cardCornerRadius="12dp"
-            app:cardElevation="4dp">
+            android:layout_marginBottom="20dp"
+            app:cardCornerRadius="16dp"
+            app:cardElevation="0dp"
+            app:cardBackgroundColor="@color/card_background"
+            app:strokeColor="@color/divider"
+            app:strokeWidth="1dp">
 
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
-                android:padding="16dp">
+                android:padding="20dp">
 
                 <TextView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:text="日志设置"
-                    android:textSize="16sp"
-                    android:textStyle="bold"
-                    android:layout_marginBottom="12dp" />
+                    android:textSize="12sp"
+                    android:textColor="@color/text_hint"
+                    android:layout_marginBottom="16dp"
+                    android:letterSpacing="0.05" />
 
                 <!-- 日志开关 -->
                 <LinearLayout
@@ -132,7 +178,7 @@
                     android:layout_height="wrap_content"
                     android:orientation="horizontal"
                     android:gravity="center_vertical"
-                    android:layout_marginBottom="12dp">
+                    android:layout_marginBottom="16dp">
 
                     <LinearLayout
                         android:layout_width="0dp"
@@ -144,14 +190,16 @@
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
                             android:text="启用日志记录"
-                            android:textSize="14sp" />
+                            android:textSize="15sp"
+                            android:textColor="@color/text_primary" />
 
                         <TextView
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:text="记录模块运行日志，方便排查问题"
+                            android:text="记录运行日志，方便排查问题"
                             android:textSize="12sp"
-                            android:textColor="@android:color/darker_gray" />
+                            android:textColor="@color/text_secondary"
+                            android:layout_marginTop="2dp" />
                     </LinearLayout>
 
                     <Switch
@@ -167,49 +215,69 @@
                     android:layout_height="wrap_content"
                     android:text="日志目录：/sdcard/AlipayRestart/"
                     android:textSize="12sp"
-                    android:textColor="@android:color/darker_gray"
-                    android:layout_marginBottom="12dp" />
+                    android:textColor="@color/text_hint"
+                    android:layout_marginBottom="16dp" />
+
+                <!-- 分割线 -->
+                <View
+                    android:layout_width="match_parent"
+                    android:layout_height="1dp"
+                    android:background="@color/divider"
+                    android:layout_marginBottom="16dp" />
 
                 <!-- 查看日志按钮 -->
                 <Button
                     android:id="@+id/btnViewLog"
                     android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
+                    android:layout_height="44dp"
                     android:text="查看最新日志"
-                    android:layout_marginBottom="8dp" />
+                    android:textSize="14sp"
+                    android:textColor="@color/button_secondary_text"
+                    android:background="@drawable/btn_secondary_background"
+                    android:layout_marginBottom="10dp" />
 
                 <!-- 查看早期启动日志按钮 -->
                 <Button
                     android:id="@+id/btnViewEarlyLog"
                     android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
+                    android:layout_height="44dp"
                     android:text="查看早期启动日志"
-                    android:layout_marginBottom="8dp" />
+                    android:textSize="14sp"
+                    android:textColor="@color/button_secondary_text"
+                    android:background="@drawable/btn_secondary_background"
+                    android:layout_marginBottom="10dp" />
 
                 <!-- 查看崩溃日志按钮 -->
                 <Button
                     android:id="@+id/btnViewCrashLog"
                     android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
+                    android:layout_height="44dp"
                     android:text="查看崩溃日志"
-                    android:layout_marginBottom="8dp" />
+                    android:textSize="14sp"
+                    android:textColor="@color/button_secondary_text"
+                    android:background="@drawable/btn_secondary_background"
+                    android:layout_marginBottom="10dp" />
 
                 <!-- 导出日志按钮 -->
                 <Button
                     android:id="@+id/btnExportLog"
                     android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
+                    android:layout_height="44dp"
                     android:text="导出日志文件"
-                    android:layout_marginBottom="8dp" />
+                    android:textSize="14sp"
+                    android:textColor="@color/button_secondary_text"
+                    android:background="@drawable/btn_secondary_background"
+                    android:layout_marginBottom="10dp" />
 
                 <!-- 清理日志按钮 -->
                 <Button
                     android:id="@+id/btnClearLog"
                     android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
+                    android:layout_height="44dp"
                     android:text="清理所有日志"
-                    style="@style/Widget.AppCompat.Button.Borderless"
-                    android:textColor="@android:color/holo_red_dark" />
+                    android:textSize="14sp"
+                    android:textColor="@color/text_secondary"
+                    android:background="@android:color/transparent" />
             </LinearLayout>
         </androidx.cardview.widget.CardView>
 
@@ -217,31 +285,47 @@
         <androidx.cardview.widget.CardView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            app:cardCornerRadius="12dp"
-            app:cardElevation="4dp">
+            android:layout_marginBottom="32dp"
+            app:cardCornerRadius="16dp"
+            app:cardElevation="0dp"
+            app:cardBackgroundColor="@color/card_background"
+            app:strokeColor="@color/divider"
+            app:strokeWidth="1dp">
 
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
-                android:padding="16dp">
+                android:padding="20dp">
 
                 <TextView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:text="使用说明"
-                    android:textSize="16sp"
-                    android:textStyle="bold"
-                    android:layout_marginBottom="8dp" />
+                    android:textSize="12sp"
+                    android:textColor="@color/text_hint"
+                    android:layout_marginBottom="12dp"
+                    android:letterSpacing="0.05" />
 
                 <TextView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="1. 在 LSPosed 中启用本模块\n2. 作用域选择「一键重启支付宝」（模块自身）\n3. 重启应用后模块状态会显示已激活\n4. 点击「创建桌面快捷方式」添加到桌面\n5. 点击桌面快捷方式即可一键重启支付宝\n\n注意：需要 Root 权限才能使用强行停止功能"
+                    android:text="1. 在 LSPosed 中启用本模块&#10;2. 作用域选择「一键重启支付宝」&#10;3. 重启应用后状态会更新&#10;4. 点击创建桌面快捷方式&#10;5. 点击快捷方式一键重启支付宝&#10;&#10;注意：需要 Root 权限"
                     android:textSize="13sp"
-                    android:lineSpacingExtra="4dp"
-                    android:textColor="@android:color/darker_gray" />
+                    android:lineSpacingExtra="6dp"
+                    android:textColor="@color/text_secondary" />
             </LinearLayout>
         </androidx.cardview.widget.CardView>
+
+        <!-- 底部版本信息 -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="v1.0 · LSPosed Module"
+            android:textSize="12sp"
+            android:textColor="@color/text_hint"
+            android:gravity="center"
+            android:layout_marginBottom="24dp" />
+
     </LinearLayout>
 </ScrollView>

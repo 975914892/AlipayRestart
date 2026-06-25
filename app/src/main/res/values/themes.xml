@@ -1,4 +1,16 @@
 <resources xmlns:tools="http://schemas.android.com/tools">
+
+    <!-- 主应用主题 - 极简黑白风格 -->
+    <style name="Theme.AlipayRestart" parent="Theme.AppCompat.Light.NoActionBar">
+        <item name="colorPrimary">@color/black</item>
+        <item name="colorPrimaryDark">@color/black</item>
+        <item name="colorAccent">@color/black</item>
+        <item name="android:windowBackground">@color/background</item>
+        <item name="android:textColorPrimary">@color/text_primary</item>
+        <item name="android:textColorSecondary">@color/text_secondary</item>
+    </style>
+
+    <!-- 透明主题 - 用于 RestartActivity -->
     <style name="Theme.AppCompat.Translucent" parent="android:Theme.Translucent.NoTitleBar">
         <item name="android:windowBackground">@android:color/transparent</item>
         <item name="android:windowIsTranslucent">true</item>

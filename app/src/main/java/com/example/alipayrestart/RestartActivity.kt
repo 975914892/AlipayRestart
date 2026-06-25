@@ -48,18 +48,13 @@ class RestartActivity : Activity() {
                 LogUtils.i(TAG, "Root 权限检查: ${if (hasRoot) "通过" else "失败"}")
 
                 if (!hasRoot) {
-                    runOnUiThread {
-                        Toast.makeText(this, "需要 Root 权限才能使用此功能", Toast.LENGTH_LONG).show()
-                        finish()
-                    }
+                    showToast("需要 Root 权限才能使用此功能")
+                    finish()
                     return@Thread
                 }
 
-                runOnUiThread {
-                    Toast.makeText(this, "正在重启支付宝...", Toast.LENGTH_SHORT).show()
-                }
-
                 // 1. 强行停止支付宝
+                showToast("正在停止支付宝...")
                 LogUtils.i(TAG, "执行 force-stop: ${ModuleStatus.TARGET_PACKAGE}")
                 val forceStopResult = RootUtils.executeCommand("am force-stop ${ModuleStatus.TARGET_PACKAGE}")
                 LogUtils.d(TAG, "force-stop 输出: $forceStopResult")
@@ -73,6 +68,7 @@ class RestartActivity : Activity() {
                 Thread.sleep(1500)
 
                 // 2. 尝试用多种方式启动支付宝
+                showToast("正在启动支付宝...")
                 var started = false
                 var startMethod = ""
 
@@ -181,13 +177,10 @@ class RestartActivity : Activity() {
                 LogUtils.i(TAG, "重启流程结束，启动方式: $startMethod, 结果: ${if (started) "成功" else "失败"}")
                 LogUtils.i(TAG, "日志文件路径: ${LogUtils.getLogFilePath()}")
 
-                val finalStarted = started
-                runOnUiThread {
-                    if (finalStarted) {
-                        Toast.makeText(this, "支付宝已重启", Toast.LENGTH_SHORT).show()
-                    } else {
-                        Toast.makeText(this, "重启失败，请手动打开支付宝", Toast.LENGTH_LONG).show()
-                    }
+                if (started) {
+                    showToast("✅ 支付宝已重启")
+                } else {
+                    showToast("❌ 重启失败，请手动打开支付宝")
                 }
 
                 // 延迟关闭
@@ -197,12 +190,19 @@ class RestartActivity : Activity() {
 
             } catch (e: Exception) {
                 LogUtils.e(TAG, "重启流程异常", e)
-                runOnUiThread {
-                    Toast.makeText(this, "重启失败: ${e.message}", Toast.LENGTH_LONG).show()
-                    finish()
-                }
+                showToast("重启失败: ${e.message}")
+                finish()
             }
         }.start()
+    }
+
+    /**
+     * 在主线程显示 Toast
+     */
+    private fun showToast(message: String) {
+        runOnUiThread {
+            Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
+        }
     }
 
     /**
