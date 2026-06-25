@@ -10,11 +10,6 @@ import de.robv.android.xposed.callbacks.XC_LoadPackage
 class MainHook : IXposedHookLoadPackage {
 
     companion object {
-        // 模块是否已激活的标记
-        @Volatile
-        var isModuleActivated = false
-            private set
-
         // 支付宝包名
         const val TARGET_PACKAGE = "com.eg.android.AlipayGphone"
         // 模块自身包名
@@ -26,8 +21,8 @@ class MainHook : IXposedHookLoadPackage {
         if (lpparam.packageName != MODULE_PACKAGE) return
 
         try {
-            // 标记模块已激活
-            isModuleActivated = true
+            // 标记模块已激活（通过独立的状态类，避免外部直接引用 MainHook）
+            ModuleStatus.isActivated = true
 
             // 初始化日志
             LogUtils.init()
@@ -35,7 +30,7 @@ class MainHook : IXposedHookLoadPackage {
             LogUtils.i("MainHook", "LSPosed API 版本: 102")
 
         } catch (e: Throwable) {
-            // 这里不能用 LogUtils，因为可能还没初始化
+            // 这里可以直接用 XposedBridge，因为是在 Hook 进程中
             de.robv.android.xposed.XposedBridge.log("AlipayRestart: 模块初始化失败 - ${e.message}")
         }
     }

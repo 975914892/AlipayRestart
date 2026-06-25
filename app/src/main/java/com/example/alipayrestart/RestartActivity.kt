@@ -60,12 +60,12 @@ class RestartActivity : Activity() {
                 }
 
                 // 1. 强行停止支付宝
-                LogUtils.i(TAG, "执行 force-stop: ${MainHook.TARGET_PACKAGE}")
-                val forceStopResult = RootUtils.executeCommand("am force-stop ${MainHook.TARGET_PACKAGE}")
+                LogUtils.i(TAG, "执行 force-stop: ${ModuleStatus.TARGET_PACKAGE}")
+                val forceStopResult = RootUtils.executeCommand("am force-stop ${ModuleStatus.TARGET_PACKAGE}")
                 LogUtils.d(TAG, "force-stop 输出: $forceStopResult")
 
                 // 确认进程是否已停止
-                val checkProcess = RootUtils.executeCommand("ps | grep ${MainHook.TARGET_PACKAGE}")
+                val checkProcess = RootUtils.executeCommand("ps | grep ${ModuleStatus.TARGET_PACKAGE}")
                 LogUtils.d(TAG, "进程检查结果: ${if (checkProcess.isBlank()) "已停止" else "仍在运行"}")
 
                 // 等待应用完全停止，给系统足够时间清理
@@ -79,7 +79,7 @@ class RestartActivity : Activity() {
                 // 方式1：用 PackageManager 获取官方启动 Intent（最可靠）
                 try {
                     LogUtils.i(TAG, "尝试方式1: PackageManager 获取启动 Intent")
-                    val launchIntent = packageManager.getLaunchIntentForPackage(MainHook.TARGET_PACKAGE)
+                    val launchIntent = packageManager.getLaunchIntentForPackage(ModuleStatus.TARGET_PACKAGE)
                     if (launchIntent != null) {
                         LogUtils.d(TAG, "启动 Intent: $launchIntent")
                         launchIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
@@ -99,7 +99,7 @@ class RestartActivity : Activity() {
                     try {
                         LogUtils.i(TAG, "尝试方式2: am start 命令")
                         val result = RootUtils.executeCommand(
-                            "am start -n ${MainHook.TARGET_PACKAGE}/com.eg.android.AlipayGphone.AlipayLoginActivity"
+                            "am start -n ${ModuleStatus.TARGET_PACKAGE}/com.eg.android.AlipayGphone.AlipayLoginActivity"
                         )
                         LogUtils.d(TAG, "方式2 输出: $result")
                         if (!result.contains("Error")) {
@@ -119,7 +119,7 @@ class RestartActivity : Activity() {
                     try {
                         LogUtils.i(TAG, "尝试方式3: monkey 命令")
                         val result = RootUtils.executeCommand(
-                            "monkey -p ${MainHook.TARGET_PACKAGE} -c android.intent.category.LAUNCHER 1"
+                            "monkey -p ${ModuleStatus.TARGET_PACKAGE} -c android.intent.category.LAUNCHER 1"
                         )
                         LogUtils.d(TAG, "方式3 输出: $result")
                         if (result.contains("Events injected: 1")) {
@@ -139,7 +139,7 @@ class RestartActivity : Activity() {
                     try {
                         LogUtils.i(TAG, "尝试方式4: am start action 方式")
                         val result = RootUtils.executeCommand(
-                            "am start -a android.intent.action.MAIN -c android.intent.category.LAUNCHER -p ${MainHook.TARGET_PACKAGE}"
+                            "am start -a android.intent.action.MAIN -c android.intent.category.LAUNCHER -p ${ModuleStatus.TARGET_PACKAGE}"
                         )
                         LogUtils.d(TAG, "方式4 输出: $result")
                         if (!result.contains("Error")) {
