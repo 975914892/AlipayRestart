@@ -99,9 +99,9 @@ class RestartActivity : Activity() {
                 // 方式1：用 monkey 命令启动（最可靠，能启动停止状态的应用）
                 if (!started) {
                     try {
-                        LogUtils.i(TAG, "尝试方式1: monkey 命令")
+                        LogUtils.i(TAG, "尝试方式1: monkey 命令（禁用旋转事件）")
                         val result = RootUtils.executeCommand(
-                            "monkey -p ${ModuleStatus.TARGET_PACKAGE} -c android.intent.category.LAUNCHER 1"
+                            "monkey -p ${ModuleStatus.TARGET_PACKAGE} -c android.intent.category.LAUNCHER --pct-rotation 0 1"
                         )
                         LogUtils.d(TAG, "方式1 输出: $result")
                         if (result.contains("Events injected: 1")) {
@@ -259,6 +259,7 @@ class RestartActivity : Activity() {
     
     /**
      * 恢复原始的自动旋转设置
+     * 使用 Root 权限执行 settings put 命令，不需要用户授权
      */
     private fun restoreRotationSetting() {
         try {
@@ -271,17 +272,25 @@ class RestartActivity : Activity() {
             LogUtils.i(TAG, "恢复自动旋转设置 - 原始值: $originalRotationSetting, 当前值: $currentRotation")
             
             if (currentRotation != originalRotationSetting && originalRotationSetting >= 0) {
-                // 检查是否有修改系统设置的权限
-                if (Settings.System.canWrite(this)) {
-                    Settings.System.putInt(
-                        contentResolver, 
-                        Settings.System.ACCELEROMETER_ROTATION, 
-                        originalRotationSetting
-                    )
-                    LogUtils.i(TAG, "自动旋转设置已恢复为: ${if (originalRotationSetting == 1) "开启" else "关闭"}")
+                // 使用 Root 权限恢复设置
+                val result = RootUtils.executeCommand(
+                    "settings put system accelerometer_rotation $originalRotationSetting"
+                )
+                LogUtils.i(TAG, "Root 恢复自动旋转结果: $result")
+                
+                // 验证是否恢复成功
+                Thread.sleep(200)
+                val verifyRotation = Settings.System.getInt(
+                    contentResolver, 
+                    Settings.System.ACCELEROMETER_ROTATION, 
+                    -1
+                )
+                LogUtils.i(TAG, "恢复后验证: $verifyRotation (期望: $originalRotationSetting)")
+                
+                if (verifyRotation == originalRotationSetting) {
+                    LogUtils.i(TAG, "自动旋转设置已成功恢复为: ${if (originalRotationSetting == 1) "开启" else "关闭"}")
                 } else {
-                    LogUtils.w(TAG, "没有修改系统设置的权限，无法恢复自动旋转")
-                    LogUtils.i(TAG, "原始值: $originalRotationSetting, 当前值: $currentRotation, 差值: ${currentRotation - originalRotationSetting}")
+                    LogUtils.w(TAG, "自动旋转恢复失败，当前值: $verifyRotation")
                 }
             } else {
                 LogUtils.i(TAG, "自动旋转设置未变化，无需恢复")
