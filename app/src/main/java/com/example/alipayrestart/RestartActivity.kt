@@ -110,8 +110,8 @@ class RestartActivity : Activity() {
                 LogUtils.d(TAG, "进程检查结果: ${if (checkStopped) "仍在运行" else "已停止"}")
                 
                 // 等待应用完全停止，给系统足够时间清理
-                LogUtils.d(TAG, "等待 1500ms 让系统清理...")
-                Thread.sleep(1500)
+                LogUtils.d(TAG, "等待 3000ms 让系统清理...")
+                Thread.sleep(3000)
                 
                 // 记录启动前的自动旋转状态
                 logRotationStatus("启动支付宝前")
