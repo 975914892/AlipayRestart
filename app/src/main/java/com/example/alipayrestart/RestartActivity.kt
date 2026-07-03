@@ -1,7 +1,9 @@
 package com.example.alipayrestart
 
 import android.app.Activity
+import android.content.Context
 import android.content.Intent
+import android.content.SharedPreferences
 import android.net.Uri
 import android.os.Bundle
 import android.os.Handler
@@ -20,13 +22,36 @@ class RestartActivity : Activity() {
     
     // 保存原始的自动旋转设置
     private var originalRotationSetting = 0
+    
+    // SharedPreferences 相关
+    private lateinit var prefs: SharedPreferences
+    
+    companion object {
+        private const val PREFS_NAME = "alipay_restart_prefs"
+        private const val KEY_LAST_SUCCESS_METHOD = "last_success_method"
+        private const val METHOD_MONKEY = "monkey"
+        private const val METHOD_AM_START = "am_start"
+        private const val METHOD_PACKAGE_MANAGER = "package_manager"
+        private const val METHOD_AM_START_ACTION = "am_start_action"
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         
+        // 初始化 SharedPreferences
+        prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        
         // 初始化日志（确保在模块进程中也有日志）
         LogUtils.init()
         LogUtils.i(TAG, "=== RestartActivity 启动 ===")
+        
+        // 读取上次成功的启动方式
+        val lastMethod = getLastSuccessfulMethod()
+        if (lastMethod != null) {
+            LogUtils.i(TAG, "上次成功的启动方式: $lastMethod")
+        } else {
+            LogUtils.i(TAG, "没有记录上次成功的启动方式，将依次尝试")
+        }
         
         // 记录启动时的自动旋转设置
         try {
@@ -91,121 +116,52 @@ class RestartActivity : Activity() {
                 // 记录启动前的自动旋转状态
                 logRotationStatus("启动支付宝前")
                 
-                // 2. 尝试用多种方式启动支付宝
+                // 2. 尝试启动支付宝（优先使用上次成功的方式）
                 showToast("正在启动支付宝...")
                 var started = false
                 var startMethod = ""
                 
-                // 方式1：用 monkey 命令启动（最可靠，能启动停止状态的应用）
-                if (!started) {
-                    try {
-                        LogUtils.i(TAG, "尝试方式1: monkey 命令（禁用旋转事件）")
-                        val result = RootUtils.executeCommand(
-                            "monkey -p ${ModuleStatus.TARGET_PACKAGE} -c android.intent.category.LAUNCHER --pct-rotation 0 1"
-                        )
-                        LogUtils.d(TAG, "方式1 输出: $result")
-                        if (result.contains("Events injected: 1")) {
-                            // 等待一下，然后检查进程
-                            Thread.sleep(1000)
-                            if (isProcessRunning(ModuleStatus.TARGET_PACKAGE)) {
-                                started = true
-                                startMethod = "monkey"
-                                LogUtils.i(TAG, "方式1 启动成功")
-                            } else {
-                                LogUtils.w(TAG, "方式1 命令执行成功但进程未启动")
-                            }
-                        } else {
-                            LogUtils.w(TAG, "方式1 失败")
-                        }
-                    } catch (e: Exception) {
-                        LogUtils.e(TAG, "方式1 启动异常", e)
+                // 先读取上次成功的方式
+                val lastMethod = getLastSuccessfulMethod()
+                
+                // 如果有上次成功的方式，先尝试它
+                if (lastMethod != null) {
+                    LogUtils.i(TAG, "优先尝试上次成功的方式: $lastMethod")
+                    val result = tryStartMethod(lastMethod)
+                    if (result.first) {
+                        started = true
+                        startMethod = lastMethod
+                        LogUtils.i(TAG, "上次成功的方式依然有效: $lastMethod")
+                    } else {
+                        LogUtils.w(TAG, "上次成功的方式失效了，开始依次尝试所有方式")
                     }
                 }
                 
-                // 记录方式1后的自动旋转状态
-                logRotationStatus("方式1后")
-                
-                // 方式2：用 am start 命令，加上 --include-stopped-packages
+                // 如果上次成功的方式失败了，或者没有记录，依次尝试所有方式
                 if (!started) {
-                    try {
-                        LogUtils.i(TAG, "尝试方式2: am start 命令（含停止包）")
-                        val result = RootUtils.executeCommand(
-                            "am start --include-stopped-packages -n ${ModuleStatus.TARGET_PACKAGE}/com.eg.android.AlipayGphone.AlipayLoginActivity"
-                        )
-                        LogUtils.d(TAG, "方式2 输出: $result")
-                        if (!result.contains("Error")) {
-                            // 等待一下，然后检查进程
-                            Thread.sleep(1000)
-                            if (isProcessRunning(ModuleStatus.TARGET_PACKAGE)) {
-                                started = true
-                                startMethod = "am start"
-                                LogUtils.i(TAG, "方式2 启动成功")
-                            } else {
-                                LogUtils.w(TAG, "方式2 命令执行成功但进程未启动")
-                            }
-                        } else {
-                            LogUtils.w(TAG, "方式2 失败: $result")
+                    val methods = listOf(
+                        METHOD_MONKEY to "monkey 命令",
+                        METHOD_AM_START to "am start 命令",
+                        METHOD_PACKAGE_MANAGER to "PackageManager",
+                        METHOD_AM_START_ACTION to "am start action 方式"
+                    )
+                    
+                    for ((methodKey, methodName) in methods) {
+                        // 跳过已经试过的方式（如果上次成功的方式试过了）
+                        if (lastMethod != null && methodKey == lastMethod) {
+                            continue
                         }
-                    } catch (e: Exception) {
-                        LogUtils.e(TAG, "方式2 启动异常", e)
-                    }
-                }
-                
-                // 记录方式2后的自动旋转状态
-                logRotationStatus("方式2后")
-                
-                // 方式3：用 PackageManager 获取官方启动 Intent
-                if (!started) {
-                    try {
-                        LogUtils.i(TAG, "尝试方式3: PackageManager 获取启动 Intent")
-                        val launchIntent = packageManager.getLaunchIntentForPackage(ModuleStatus.TARGET_PACKAGE)
-                        if (launchIntent != null) {
-                            LogUtils.d(TAG, "启动 Intent: $launchIntent")
-                            launchIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
-                            startActivity(launchIntent)
-                            // 等待一下，然后检查进程
-                            Thread.sleep(1000)
-                            if (isProcessRunning(ModuleStatus.TARGET_PACKAGE)) {
-                                started = true
-                                startMethod = "PackageManager"
-                                LogUtils.i(TAG, "方式3 启动成功")
-                            } else {
-                                LogUtils.w(TAG, "方式3 命令执行成功但进程未启动")
-                            }
+                        
+                        LogUtils.i(TAG, "尝试方式: $methodName")
+                        val result = tryStartMethod(methodKey)
+                        if (result.first) {
+                            started = true
+                            startMethod = methodKey
+                            LogUtils.i(TAG, "方式 $methodName 启动成功")
+                            break
                         } else {
-                            LogUtils.w(TAG, "方式3 失败: 无法获取启动 Intent")
+                            LogUtils.w(TAG, "方式 $methodName 失败")
                         }
-                    } catch (e: Exception) {
-                        LogUtils.e(TAG, "方式3 启动异常", e)
-                    }
-                }
-                
-                // 记录方式3后的自动旋转状态
-                logRotationStatus("方式3后")
-                
-                // 方式4：再试一次 am start，用 action 方式
-                if (!started) {
-                    try {
-                        LogUtils.i(TAG, "尝试方式4: am start action 方式")
-                        val result = RootUtils.executeCommand(
-                            "am start --include-stopped-packages -a android.intent.action.MAIN -c android.intent.category.LAUNCHER -p ${ModuleStatus.TARGET_PACKAGE}"
-                        )
-                        LogUtils.d(TAG, "方式4 输出: $result")
-                        if (!result.contains("Error")) {
-                            // 等待一下，然后检查进程
-                            Thread.sleep(1000)
-                            if (isProcessRunning(ModuleStatus.TARGET_PACKAGE)) {
-                                started = true
-                                startMethod = "am start action"
-                                LogUtils.i(TAG, "方式4 启动成功")
-                            } else {
-                                LogUtils.w(TAG, "方式4 命令执行成功但进程未启动")
-                            }
-                        } else {
-                            LogUtils.w(TAG, "方式4 失败: $result")
-                        }
-                    } catch (e: Exception) {
-                        LogUtils.e(TAG, "方式4 启动异常", e)
                     }
                 }
                 
@@ -217,8 +173,14 @@ class RestartActivity : Activity() {
                 
                 if (started) {
                     showToast("✅ 支付宝已重启")
+                    // 保存成功的方式
+                    saveSuccessfulMethod(startMethod)
+                    LogUtils.i(TAG, "已保存成功的启动方式: $startMethod")
                 } else {
                     showToast("❌ 重启失败，请手动打开支付宝")
+                    // 清除上次成功的方式，因为可能都失效了
+                    clearLastSuccessfulMethod()
+                    LogUtils.i(TAG, "所有方式都失败，已清除记录")
                 }
                 
                 // 尝试恢复自动旋转设置
@@ -239,6 +201,168 @@ class RestartActivity : Activity() {
                 finish()
             }
         }.start()
+    }
+    
+    /**
+     * 尝试指定的启动方式
+     * @return Pair<是否成功, 方式名称>
+     */
+    private fun tryStartMethod(method: String): Pair<Boolean, String> {
+        return try {
+            val success = when (method) {
+                METHOD_MONKEY -> tryMonkeyMethod()
+                METHOD_AM_START -> tryAmStartMethod()
+                METHOD_PACKAGE_MANAGER -> tryPackageManagerMethod()
+                METHOD_AM_START_ACTION -> tryAmStartActionMethod()
+                else -> false
+            }
+            success to method
+        } catch (e: Exception) {
+            LogUtils.e(TAG, "方式 $method 执行异常", e)
+            false to method
+        }
+    }
+    
+    /**
+     * 方式1：monkey 命令
+     */
+    private fun tryMonkeyMethod(): Boolean {
+        return try {
+            val result = RootUtils.executeCommand(
+                "monkey -p ${ModuleStatus.TARGET_PACKAGE} -c android.intent.category.LAUNCHER --pct-rotation 0 1"
+            )
+            LogUtils.d(TAG, "monkey 输出: $result")
+            if (result.contains("Events injected: 1")) {
+                Thread.sleep(1000)
+                if (isProcessRunning(ModuleStatus.TARGET_PACKAGE)) {
+                    true
+                } else {
+                    LogUtils.w(TAG, "monkey 命令执行成功但进程未启动")
+                    false
+                }
+            } else {
+                false
+            }
+        } catch (e: Exception) {
+            LogUtils.e(TAG, "monkey 方式异常", e)
+            false
+        }
+    }
+    
+    /**
+     * 方式2：am start 命令
+     */
+    private fun tryAmStartMethod(): Boolean {
+        return try {
+            val result = RootUtils.executeCommand(
+                "am start --include-stopped-packages -n ${ModuleStatus.TARGET_PACKAGE}/com.eg.android.AlipayGphone.AlipayLoginActivity"
+            )
+            LogUtils.d(TAG, "am start 输出: $result")
+            if (!result.contains("Error")) {
+                Thread.sleep(1000)
+                if (isProcessRunning(ModuleStatus.TARGET_PACKAGE)) {
+                    true
+                } else {
+                    LogUtils.w(TAG, "am start 命令执行成功但进程未启动")
+                    false
+                }
+            } else {
+                false
+            }
+        } catch (e: Exception) {
+            LogUtils.e(TAG, "am start 方式异常", e)
+            false
+        }
+    }
+    
+    /**
+     * 方式3：PackageManager
+     */
+    private fun tryPackageManagerMethod(): Boolean {
+        return try {
+            val launchIntent = packageManager.getLaunchIntentForPackage(ModuleStatus.TARGET_PACKAGE)
+            if (launchIntent != null) {
+                LogUtils.d(TAG, "启动 Intent: $launchIntent")
+                launchIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
+                startActivity(launchIntent)
+                Thread.sleep(1000)
+                if (isProcessRunning(ModuleStatus.TARGET_PACKAGE)) {
+                    true
+                } else {
+                    LogUtils.w(TAG, "PackageManager 启动成功但进程未启动")
+                    false
+                }
+            } else {
+                LogUtils.w(TAG, "PackageManager 无法获取启动 Intent")
+                false
+            }
+        } catch (e: Exception) {
+            LogUtils.e(TAG, "PackageManager 方式异常", e)
+            false
+        }
+    }
+    
+    /**
+     * 方式4：am start action 方式
+     */
+    private fun tryAmStartActionMethod(): Boolean {
+        return try {
+            val result = RootUtils.executeCommand(
+                "am start --include-stopped-packages -a android.intent.action.MAIN -c android.intent.category.LAUNCHER -p ${ModuleStatus.TARGET_PACKAGE}"
+            )
+            LogUtils.d(TAG, "am start action 输出: $result")
+            if (!result.contains("Error")) {
+                Thread.sleep(1000)
+                if (isProcessRunning(ModuleStatus.TARGET_PACKAGE)) {
+                    true
+                } else {
+                    LogUtils.w(TAG, "am start action 命令执行成功但进程未启动")
+                    false
+                }
+            } else {
+                false
+            }
+        } catch (e: Exception) {
+            LogUtils.e(TAG, "am start action 方式异常", e)
+            false
+        }
+    }
+    
+    /**
+     * 获取上次成功的启动方式
+     */
+    private fun getLastSuccessfulMethod(): String? {
+        return try {
+            val method = prefs.getString(KEY_LAST_SUCCESS_METHOD, null)
+            method
+        } catch (e: Exception) {
+            LogUtils.e(TAG, "读取上次成功方式失败", e)
+            null
+        }
+    }
+    
+    /**
+     * 保存成功的启动方式
+     */
+    private fun saveSuccessfulMethod(method: String) {
+        try {
+            prefs.edit().putString(KEY_LAST_SUCCESS_METHOD, method).apply()
+            LogUtils.i(TAG, "已保存成功的启动方式到本地: $method")
+        } catch (e: Exception) {
+            LogUtils.e(TAG, "保存成功方式失败", e)
+        }
+    }
+    
+    /**
+     * 清除上次成功的启动方式
+     */
+    private fun clearLastSuccessfulMethod() {
+        try {
+            prefs.edit().remove(KEY_LAST_SUCCESS_METHOD).apply()
+            LogUtils.i(TAG, "已清除上次成功的启动方式记录")
+        } catch (e: Exception) {
+            LogUtils.e(TAG, "清除成功方式失败", e)
+        }
     }
     
     /**
