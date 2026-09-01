@@ -36,6 +36,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var btnClearLog: Button
     private lateinit var btnViewEarlyLog: Button
     private lateinit var btnViewCrashLog: Button
+    private lateinit var tvProjectUrl: TextView
 
     private val configDir: File by lazy {
         File(Environment.getExternalStorageDirectory(), "AlipayRestart")
@@ -146,6 +147,7 @@ class MainActivity : AppCompatActivity() {
         btnClearLog = findViewById(R.id.btnClearLog)
         btnViewEarlyLog = findViewById(R.id.btnViewEarlyLog)
         btnViewCrashLog = findViewById(R.id.btnViewCrashLog)
+        tvProjectUrl = findViewById(R.id.tvProjectUrl)
     }
 
     /**
@@ -183,6 +185,9 @@ class MainActivity : AppCompatActivity() {
 
         btnViewCrashLog.setOnClickListener {
             viewCrashLog()
+        }
+        tvProjectUrl.setOnClickListener {
+            openProjectUrl()
         }
     }
 
@@ -491,6 +496,21 @@ class MainActivity : AppCompatActivity() {
         } catch (e: Exception) {
             Toast.makeText(this, "打开崩溃日志失败: ${e.message}", Toast.LENGTH_LONG).show()
             LogUtils.e(TAG, "打开崩溃日志失败", e)
+        }
+    }
+
+    /**
+     * 打开项目地址
+     */
+    private fun openProjectUrl() {
+        try {
+            val url = "https://github.com/975914892/AlipayRestart"
+            val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
+            startActivity(intent)
+            LogUtils.i(TAG, "打开项目地址: $url")
+        } catch (e: Exception) {
+            Toast.makeText(this, "打开失败: ${e.message}", Toast.LENGTH_SHORT).show()
+            LogUtils.e(TAG, "打开项目地址失败", e)
         }
     }
 
