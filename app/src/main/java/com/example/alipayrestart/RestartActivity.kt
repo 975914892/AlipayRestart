@@ -96,22 +96,47 @@ class RestartActivity : Activity() {
                 // 记录 force-stop 前的自动旋转状态
                 logRotationStatus("force-stop 前")
                 
-                // 1. 强行停止支付宝
+                // 1. 强行停止支付宝（彻底杀死所有相关进程）
                 showToast("正在停止支付宝...")
                 LogUtils.i(TAG, "执行 force-stop: ${ModuleStatus.TARGET_PACKAGE}")
-                val forceStopResult = RootUtils.executeCommand("am force-stop ${ModuleStatus.TARGET_PACKAGE}")
-                LogUtils.d(TAG, "force-stop 输出: $forceStopResult")
+                
+                // 多管齐下彻底杀死进程
+                RootUtils.executeCommand("am force-stop ${ModuleStatus.TARGET_PACKAGE}")
+                RootUtils.executeCommand("am kill ${ModuleStatus.TARGET_PACKAGE}")
+                RootUtils.executeCommand("killall ${ModuleStatus.TARGET_PACKAGE}")
+                val pkillResult = RootUtils.executeCommand("pkill -f com.eg.android.AlipayGphone")
+                LogUtils.d(TAG, "force-stop 系列命令完成")
                 
                 // 记录 force-stop 后的自动旋转状态
                 logRotationStatus("force-stop 后")
                 
                 // 确认进程是否已停止
-                val checkStopped = isProcessRunning(ModuleStatus.TARGET_PACKAGE)
+                var checkStopped = isProcessRunning(ModuleStatus.TARGET_PACKAGE)
                 LogUtils.d(TAG, "进程检查结果: ${if (checkStopped) "仍在运行" else "已停止"}")
+                
+                // 如果还有进程残留，再杀一次
+                if (checkStopped) {
+                    LogUtils.w(TAG, "进程仍在运行，再次彻底杀死...")
+                    RootUtils.executeCommand("am force-stop ${ModuleStatus.TARGET_PACKAGE}")
+                    RootUtils.executeCommand("pkill -9 -f com.eg.android.AlipayGphone")
+                    Thread.sleep(1000)
+                    checkStopped = isProcessRunning(ModuleStatus.TARGET_PACKAGE)
+                    LogUtils.d(TAG, "二次杀进程后检查: ${if (checkStopped) "仍在运行" else "已停止"}")
+                }
                 
                 // 等待应用完全停止，给系统足够时间清理
                 LogUtils.d(TAG, "等待 3000ms 让系统清理...")
                 Thread.sleep(3000)
+                
+                // 等待后再次检查，防止系统自动拉起后台服务
+                val checkAfterWait = isProcessRunning(ModuleStatus.TARGET_PACKAGE)
+                if (checkAfterWait) {
+                    LogUtils.w(TAG, "等待后进程被系统重新拉起，再次杀死...")
+                    RootUtils.executeCommand("am force-stop ${ModuleStatus.TARGET_PACKAGE}")
+                    RootUtils.executeCommand("pkill -9 -f com.eg.android.AlipayGphone")
+                    Thread.sleep(1000)
+                    LogUtils.d(TAG, "清理后台拉起后: ${if (isProcessRunning(ModuleStatus.TARGET_PACKAGE)) "仍在运行" else "已停止"}")
+                }
                 
                 // 记录启动前的自动旋转状态
                 logRotationStatus("启动支付宝前")
@@ -183,7 +208,10 @@ class RestartActivity : Activity() {
                     LogUtils.i(TAG, "所有方式都失败，已清除记录")
                 }
                 
-                // 尝试恢复自动旋转设置
+                // 立即恢复自动旋转设置（不等后续操作）
+                restoreRotationSetting()
+                // 二次确认恢复，防止支付宝运行中再次修改
+                Thread.sleep(1000)
                 restoreRotationSetting()
                 
                 // 延迟关闭
@@ -395,29 +423,49 @@ class RestartActivity : Activity() {
             
             LogUtils.i(TAG, "恢复自动旋转设置 - 原始值: $originalRotationSetting, 当前值: $currentRotation")
             
-            if (currentRotation != originalRotationSetting && originalRotationSetting >= 0) {
-                // 使用 Root 权限恢复设置
-                val result = RootUtils.executeCommand(
-                    "settings put system accelerometer_rotation $originalRotationSetting"
-                )
-                LogUtils.i(TAG, "Root 恢复自动旋转结果: $result")
-                
-                // 验证是否恢复成功
-                Thread.sleep(200)
-                val verifyRotation = Settings.System.getInt(
+            if (originalRotationSetting < 0) {
+                LogUtils.w(TAG, "原始自动旋转值无效，跳过恢复")
+                return
+            }
+            
+            if (currentRotation == originalRotationSetting) {
+                LogUtils.i(TAG, "自动旋转设置未变化，无需恢复")
+                return
+            }
+            
+            // 使用 Root 权限恢复设置
+            val result = RootUtils.executeCommand(
+                "settings put system accelerometer_rotation $originalRotationSetting"
+            )
+            LogUtils.i(TAG, "Root 恢复自动旋转结果: $result")
+            
+            // 验证是否恢复成功
+            Thread.sleep(500)
+            val verifyRotation = Settings.System.getInt(
+                contentResolver, 
+                Settings.System.ACCELEROMETER_ROTATION, 
+                -1
+            )
+            LogUtils.i(TAG, "恢复后验证: $verifyRotation (期望: $originalRotationSetting)")
+            
+            if (verifyRotation == originalRotationSetting) {
+                LogUtils.i(TAG, "自动旋转设置已成功恢复为: ${if (originalRotationSetting == 1) "开启" else "关闭"}")
+            } else {
+                LogUtils.w(TAG, "首次恢复失败，重试一次...")
+                // 重试
+                RootUtils.executeCommand("settings put system accelerometer_rotation $originalRotationSetting")
+                Thread.sleep(500)
+                val retryVerify = Settings.System.getInt(
                     contentResolver, 
                     Settings.System.ACCELEROMETER_ROTATION, 
                     -1
                 )
-                LogUtils.i(TAG, "恢复后验证: $verifyRotation (期望: $originalRotationSetting)")
-                
-                if (verifyRotation == originalRotationSetting) {
-                    LogUtils.i(TAG, "自动旋转设置已成功恢复为: ${if (originalRotationSetting == 1) "开启" else "关闭"}")
+                LogUtils.i(TAG, "重试后验证: $retryVerify (期望: $originalRotationSetting)")
+                if (retryVerify == originalRotationSetting) {
+                    LogUtils.i(TAG, "重试后自动旋转恢复成功")
                 } else {
-                    LogUtils.w(TAG, "自动旋转恢复失败，当前值: $verifyRotation")
+                    LogUtils.w(TAG, "自动旋转恢复仍失败，当前值: $retryVerify")
                 }
-            } else {
-                LogUtils.i(TAG, "自动旋转设置未变化，无需恢复")
             }
         } catch (e: Exception) {
             LogUtils.e(TAG, "恢复自动旋转设置失败", e)
@@ -438,9 +486,16 @@ class RestartActivity : Activity() {
      */
     private fun isProcessRunning(packageName: String): Boolean {
         return try {
-            val result = RootUtils.executeCommand("ps -A | grep $packageName")
-            val running = result.isNotBlank() && result.contains(packageName)
-            LogUtils.d(TAG, "检查进程 $packageName: ${if (running) "运行中" else "未运行"}")
+            // 用更宽泛的匹配，检查所有支付宝相关进程（包括子进程、push进程等）
+            val result = RootUtils.executeCommand("ps -A | grep -i alipay")
+            val lines = result.lines().filter { it.isNotBlank() && !it.contains("grep") }
+            val running = lines.isNotEmpty()
+            if (running) {
+                LogUtils.d(TAG, "检查进程 $packageName: 运行中，相关进程: ${lines.size}个")
+                lines.forEach { line -> LogUtils.d(TAG, "  -> $line") }
+            } else {
+                LogUtils.d(TAG, "检查进程 $packageName: 未运行")
+            }
             running
         } catch (e: Exception) {
             LogUtils.e(TAG, "检查进程失败", e)
